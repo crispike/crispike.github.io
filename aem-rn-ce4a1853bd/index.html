@@ -1,0 +1,1017 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta name="robots" content="noindex,nofollow,noarchive">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AEM REP NETWORK</title>
+<style>
+/* Layout idea: an operations console — motion tiles on top, filter rail, then the decision (rep rationalization), then charts, then 100+ drillable measure cards. */
+:root{
+  color-scheme: light;
+  --plane:#f4f5f7; --surface:#ffffff; --surface-2:#f8f9fb; --ink:#0f1720; --ink-2:#4a5463; --muted:#7c8594;
+  --line:#e3e6eb; --line-2:#cfd4dc; --accent:#1f5fbf; --accent-soft:#e7effb; --accent-ink:#ffffff;
+  --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a; --s4:#eda100;
+  --good:#0a7d0a; --good-bg:#e5f4e5; --warn:#8a5a00; --warn-bg:#fdf1d6; --crit:#b42727; --crit-bg:#fbe5e5;
+  --grid:#e9ebef; --shadow:0 1px 2px rgba(15,23,32,.06),0 4px 14px rgba(15,23,32,.05);
+  --font: system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme: dark;
+    --plane:#0c0f14; --surface:#151a21; --surface-2:#1a2029; --ink:#eef1f5; --ink-2:#b7bfcb; --muted:#8892a0;
+    --line:#262d38; --line-2:#333b48; --accent:#5b9bf0; --accent-soft:#1b2a40; --accent-ink:#0c0f14;
+    --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500;
+    --good:#3ec23e; --good-bg:#13281a; --warn:#f2b640; --warn-bg:#2d2412; --crit:#f07070; --crit-bg:#341818;
+    --grid:#232a34; --shadow:0 1px 2px rgba(0,0,0,.4);
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme: dark;
+  --plane:#0c0f14; --surface:#151a21; --surface-2:#1a2029; --ink:#eef1f5; --ink-2:#b7bfcb; --muted:#8892a0;
+  --line:#262d38; --line-2:#333b48; --accent:#5b9bf0; --accent-soft:#1b2a40; --accent-ink:#0c0f14;
+  --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500;
+  --good:#3ec23e; --good-bg:#13281a; --warn:#f2b640; --warn-bg:#2d2412; --crit:#f07070; --crit-bg:#341818;
+  --grid:#232a34; --shadow:0 1px 2px rgba(0,0,0,.4);
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--plane);color:var(--ink);font-family:var(--font);font-size:14px;line-height:1.45;font-variant-numeric:tabular-nums}
+button,input,select{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.wrap{max-width:1480px;margin:0 auto;padding:20px 20px 60px;display:flex;flex-direction:column;gap:18px}
+header.top{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px}
+h1{margin:0;font-size:28px;letter-spacing:.08em;font-weight:800}
+h1 span{color:var(--accent)}
+.sub{color:var(--ink-2);margin-top:4px}
+h2{font-size:15px;letter-spacing:.06em;text-transform:uppercase;margin:0;color:var(--ink);text-wrap:balance}
+h3{font-size:14px;margin:0;font-weight:650}
+.muted{color:var(--muted)}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow)}
+.panel-h{display:flex;align-items:baseline;justify-content:space-between;gap:10px;padding:14px 16px 0;flex-wrap:wrap}
+.panel-b{padding:12px 16px 16px}
+.lbl{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:650}
+
+/* Parent filter: sales motion */
+.motion{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px}
+.mtile{all:unset;cursor:pointer;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px 14px;display:flex;flex-direction:column;gap:4px;box-shadow:var(--shadow);border-top:4px solid var(--line-2);transition:border-color .15s}
+.mtile:hover{border-color:var(--accent)}
+.mtile[aria-pressed="true"]{border-color:var(--accent);border-top-color:var(--accent);background:var(--accent-soft)}
+.mtile .v{font-size:24px;font-weight:750}
+.mtile .s{color:var(--ink-2);font-size:12.5px}
+.mtile .step{font-size:11px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;font-weight:700}
+
+/* Filters */
+.filters{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:8px}
+.f{position:relative;display:flex;flex-direction:column;gap:3px}
+.f > label{font-size:11px;color:var(--muted);font-weight:650;letter-spacing:.04em}
+.fbtn{all:unset;box-sizing:border-box;cursor:pointer;background:var(--surface-2);border:1px solid var(--line-2);border-radius:7px;padding:6px 28px 6px 9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;position:relative;min-height:32px}
+.fbtn::after{content:"▾";position:absolute;right:9px;top:6px;color:var(--muted)}
+.fbtn.on{border-color:var(--accent);background:var(--accent-soft);font-weight:600}
+.fpanel{position:absolute;z-index:40;top:100%;left:0;margin-top:4px;min-width:260px;max-width:340px;background:var(--surface);border:1px solid var(--line-2);border-radius:8px;box-shadow:0 10px 30px rgba(0,0,0,.18);padding:8px;display:none}
+.fpanel.open{display:block}
+.fpanel input[type=search]{width:100%;padding:6px 8px;border:1px solid var(--line-2);border-radius:6px;background:var(--surface-2);margin-bottom:6px}
+.fopts{max-height:280px;overflow:auto;display:flex;flex-direction:column}
+.fopt{display:flex;align-items:center;gap:7px;padding:4px 4px;border-radius:5px;cursor:pointer}
+.fopt:hover{background:var(--surface-2)}
+.fopt .cnt{margin-left:auto;color:var(--muted);font-size:12px}
+.fact{display:flex;gap:6px;margin-top:6px;border-top:1px solid var(--line);padding-top:6px}
+.lnk{all:unset;cursor:pointer;color:var(--accent);font-size:12.5px;font-weight:600}
+.tree .lvl1{padding-left:18px}.tree .lvl2{padding-left:36px}
+.tree .tog{all:unset;cursor:pointer;width:14px;color:var(--muted);text-align:center}
+select.plain{background:var(--surface-2);border:1px solid var(--line-2);border-radius:7px;padding:6px 8px;min-height:32px}
+.seg{display:inline-flex;border:1px solid var(--line-2);border-radius:8px;overflow:hidden}.seg button{all:unset;cursor:pointer;padding:6px 14px;font-weight:650;border-right:1px solid var(--line-2)}.seg button:last-child{border-right:0}.seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
+.chips{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.chip{display:inline-flex;align-items:center;gap:6px;background:var(--accent-soft);color:var(--ink);border:1px solid var(--accent);border-radius:999px;padding:2px 4px 2px 10px;font-size:12.5px}
+.chip button{all:unset;cursor:pointer;width:18px;height:18px;border-radius:50%;text-align:center;line-height:18px}
+.chip button:hover{background:var(--accent);color:var(--accent-ink)}
+.btn{all:unset;cursor:pointer;border:1px solid var(--line-2);background:var(--surface);border-radius:7px;padding:6px 12px;font-weight:600}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+
+/* Brief */
+.brief{display:grid;grid-template-columns:1.25fr 1fr;gap:14px}
+@media (max-width:980px){.brief{grid-template-columns:1fr}}
+.brief ol{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:7px;max-width:75ch}
+.brief li b{font-weight:700}
+.flags{display:flex;flex-direction:column;gap:6px}
+.flag{display:flex;gap:8px;align-items:flex-start;padding:7px 9px;border-radius:7px;background:var(--warn-bg);color:var(--ink)}
+.flag i{font-style:normal;font-weight:800;color:var(--warn)}
+
+/* Pills */
+.pill{display:inline-flex;align-items:center;gap:4px;border-radius:999px;padding:1px 8px;font-size:12px;font-weight:700;white-space:nowrap}
+.pill.keep{background:var(--good-bg);color:var(--good)}
+.pill.cut{background:var(--crit-bg);color:var(--crit)}
+.pill.watch{background:var(--warn-bg);color:var(--warn)}
+
+/* Charts */
+.charts{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(560px,100%),1fr));gap:14px}
+@media (max-width:520px){.charts{grid-template-columns:1fr}}
+.chart{width:100%;overflow:hidden}
+.chart svg{display:block;width:100%;height:auto}
+.chart text{fill:var(--ink-2);font-size:11px;font-family:var(--font)}
+.chart .val{fill:var(--ink);font-weight:600}
+.chart .ax{stroke:var(--line-2)}
+.chart .gl{stroke:var(--grid)}
+.legend{display:flex;flex-wrap:wrap;gap:12px;font-size:12px;color:var(--ink-2);margin-bottom:6px}
+.legend span::before{content:"";display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px;background:var(--c)}
+#tip{position:fixed;z-index:80;pointer-events:none;background:var(--ink);color:var(--surface);padding:6px 9px;border-radius:6px;font-size:12px;max-width:300px;display:none;box-shadow:0 6px 20px rgba(0,0,0,.25)}
+.mark{cursor:pointer}
+.mark:hover{opacity:.8}
+
+/* Rationalization */
+.ratgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:12px}
+.kpi{background:var(--surface-2);border:1px solid var(--line);border-radius:8px;padding:9px 11px}
+.kpi .v{font-size:20px;font-weight:750}
+.kpi .s{font-size:12px;color:var(--ink-2)}
+.controls{display:flex;flex-wrap:wrap;gap:14px;align-items:center;margin-bottom:12px}
+.controls label{display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--ink-2)}
+.controls input[type=number]{width:64px;padding:4px 6px;border:1px solid var(--line-2);border-radius:6px;background:var(--surface-2)}
+.controls input[type=range]{width:90px}
+.tbl-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:8px}
+table{border-collapse:collapse;width:100%;font-size:12.5px}
+th,td{padding:7px 9px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap}
+th{background:var(--surface-2);font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--ink-2);position:sticky;top:0;cursor:pointer;user-select:none}
+th.num,td.num{text-align:right}
+tr:hover td{background:var(--surface-2)}
+tr.cutrow td{color:var(--ink-2)}
+.sbar{display:inline-block;height:8px;border-radius:4px;background:var(--s1);vertical-align:middle;margin-right:6px}
+td.wrapcell{white-space:normal;min-width:220px}
+
+/* Measure cards */
+.secs{display:flex;flex-direction:column;gap:16px}
+.sec-h{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:8px}
+.sec-h .tag{font-size:11px;font-weight:800;letter-spacing:.08em;color:var(--accent)}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:9px}
+.card{all:unset;box-sizing:border-box;cursor:pointer;background:var(--surface);border:1px solid var(--line);border-left:3px solid var(--line-2);border-radius:8px;padding:10px 11px;display:flex;flex-direction:column;gap:3px;min-height:96px;box-shadow:var(--shadow)}
+.card:hover{border-color:var(--accent);border-left-color:var(--accent)}
+.card .t{font-size:12px;color:var(--ink-2);font-weight:600;line-height:1.3}
+.card .v{font-size:20px;font-weight:750;margin-top:auto}
+.card .s{font-size:11.5px;color:var(--muted)}
+.card .go{font-size:11.5px;color:var(--accent);font-weight:650}
+.card.flagged{border-left-color:var(--warn)}
+.card.pending{border-style:dashed;cursor:default;opacity:.75}
+
+/* Modal */
+.modal{position:fixed;inset:0;background:rgba(5,10,18,.55);z-index:60;display:none;align-items:flex-start;justify-content:center;padding:24px 12px;overflow:auto}
+.modal.open{display:flex}
+.mbox{background:var(--plane);border:1px solid var(--line-2);border-radius:12px;width:min(1200px,100%);padding:18px;display:flex;flex-direction:column;gap:14px}
+.mhead{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+.mhead .big{font-size:34px;font-weight:800;line-height:1.1}
+.def{color:var(--ink-2);max-width:80ch}
+.mgrid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media (max-width:860px){.mgrid{grid-template-columns:1fr}}
+.related{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:8px}
+.foot{color:var(--muted);font-size:12px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+
+#moreF{display:none}
+@media (max-width:640px){
+ .wrap{padding:12px 10px 40px;gap:12px}
+ h1{font-size:22px}
+ .motion{grid-template-columns:1fr 1fr;gap:8px}
+ .mtile .v{font-size:20px}
+ .filters{grid-template-columns:1fr 1fr;gap:6px}
+ .filters.collapsed>*:nth-child(n+10){display:none}
+ #moreF{display:block;width:100%;margin-top:8px;padding:10px;border:1px solid var(--line-2);border-radius:8px;background:var(--surface-2);font-weight:650;color:var(--ink);font:inherit;font-weight:650}
+ .fpanel{position:fixed;left:8px;right:8px;top:auto;bottom:8px;max-width:none;min-width:0;max-height:70vh;overflow:auto;z-index:70}
+ .charts{grid-template-columns:1fr}
+ .charts>*,.mgrid>*,.brief>*,.wrap>*{min-width:0}
+ .chart{overflow-x:auto;-webkit-overflow-scrolling:touch;max-width:100%}
+ .chart svg{min-width:600px}
+ .seg button{padding:8px 10px}
+ .modal{padding:6px 2px}
+ .panel-h{flex-wrap:wrap;gap:4px}
+ .ratgrid{grid-template-columns:1fr 1fr}
+ .cards{grid-template-columns:1fr 1fr}
+}
+.perfrule{background:var(--surface-2);border:1px solid var(--line);border-radius:8px;padding:9px 12px;font-size:13px;margin-bottom:6px}
+#perfTbl td.why{white-space:normal;font-size:12.5px;line-height:1.45;color:var(--ink-2);padding-top:0;padding-bottom:10px}
+#perfTbl tr:has(+tr.whyrow) td{border-bottom:0}
+#cPerf{max-width:820px}
+@media (max-width:640px){#perfTbl td.why{min-width:520px}}
+#perfTbl tr.tot td{font-weight:700;background:var(--surface-2)}
+#perfTbl td.dec{white-space:nowrap}
+.bars{font-size:12px;white-space:nowrap}.bars b{display:inline-block;min-width:16px;text-align:center;border-radius:4px;margin-right:2px;padding:0 3px}.bars .y{background:var(--good-bg);color:var(--good)}.bars .n{background:var(--crit-bg);color:var(--crit)}
+</style>
+</head>
+<body>
+<div id="tip" role="tooltip"></div>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>AEM <span>REP NETWORK</span></h1>
+      <div class="sub" id="subline"></div>
+    </div>
+    <div class="chips" style="gap:8px">
+      <span class="muted" id="countline"></span>
+      <button class="btn" id="resetAll" type="button">Reset all filters</button>
+    </div>
+  </header>
+
+  <section aria-label="Sales motion (parent filter)">
+    <div class="lbl" style="margin-bottom:6px">Parent filter · sales motion — pick one to focus the measure cards</div>
+    <div class="motion" id="motion"></div>
+  </section>
+
+  <section class="panel" aria-label="Top-level filters">
+    <div class="panel-h"><h2>Filters</h2><span class="muted" style="font-size:12px">Every chart, card, table and the rep scorecard update together.</span></div>
+    <div class="panel-b">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px"><span class="lbl">Rep status · parent filter</span><div class="seg" id="statusSeg" role="group" aria-label="Rep status"></div><span class="muted" style="font-size:12px">Active = on the current rep roster · Inactive = terminated (on 2026 opportunities, not on the roster)</span></div>
+      <div class="filters collapsed" id="filters"></div><button type="button" id="moreF" aria-expanded="false">Show all filters</button>
+      <div class="chips" id="chips" style="margin-top:10px"></div>
+    </div>
+  </section>
+
+  <section class="brief">
+    <div class="panel">
+      <div class="panel-h"><h2>Brief for Fernando</h2><span class="muted" style="font-size:12px">Full 2026 dataset, before filters</span></div>
+      <div class="panel-b"><ol id="brief"></ol></div>
+    </div>
+    <div class="panel">
+      <div class="panel-h"><h2>Read before deciding</h2><span class="muted" style="font-size:12px">Data gaps that change the answer</span></div>
+      <div class="panel-b flags" id="flags"></div>
+    </div>
+  </section>
+
+  <section class="panel" id="ratSec" aria-label="Rep rationalization">
+    <div class="panel-h"><h2>Rep network: roster, score and coverage</h2><span class="muted" style="font-size:12px">Score reflects current filters. Adjust weights to test the call.</span></div>
+    <div class="panel-b">
+      <div class="controls" id="controls"></div>
+      <div class="ratgrid" id="ratKpis"></div>
+      <div class="charts" style="margin-bottom:12px">
+        <div><h3>Rep score (0–100) · Americas + EMEA</h3><div class="legend"><span style="--c:var(--s1)">Active</span><span style="--c:var(--s2)">Terminated (faded)</span></div><div class="chart" id="cScore"></div></div>
+        <div><h3>2026 $ by territory owner (active rep coverage)</h3><div class="legend"><span style="--c:var(--s1)">Covered by an active rep's territory</span><span style="--c:var(--s2)">No active rep</span></div><div class="chart" id="cPareto"></div></div>
+      </div>
+      <h3 style="margin:4px 0 8px">Rep roster and scorecard · all reps</h3>
+      <div class="tbl-wrap"><table id="repTbl"></table></div>
+      <h3 style="margin:16px 0 8px">Terminated reps' accounts · who covers them now</h3>
+      <div class="tbl-wrap"><table id="reassign"></table></div>
+      <div class="foot" style="margin-top:8px" id="ratFoot"></div>
+    </div>
+  </section>
+
+  <section aria-label="Trend charts">
+    <div class="charts" id="charts"></div>
+  </section>
+
+  <section class="panel" id="perfSec" aria-label="Performance stack rank">
+    <div class="panel-h"><div class="sec-h"><span class="tag">MEASURES · STACK RANK</span><h2>Active rep stack rank: retain or terminate on performance</h2></div><span class="muted" style="font-size:12px">Full 2026 data · active Americas + EMEA reps · not affected by filters</span></div>
+    <div class="panel-b">
+      <div class="ratgrid" id="perfKpis"></div>
+      <div class="perfrule" id="perfRule"></div>
+      <div class="chart" id="cPerf" style="margin:6px 0 14px"></div>
+      <div class="tbl-wrap"><table id="perfTbl"></table></div>
+      <div class="muted" id="perfNote" style="font-size:12px;margin-top:8px"></div>
+    </div>
+  </section>
+
+  <section class="secs" id="secs" aria-label="Measures"></section>
+
+  <div class="foot" id="footnote"></div>
+</div>
+
+<div class="modal" id="modal" role="dialog" aria-modal="true" aria-labelledby="mTitle">
+  <div class="mbox" id="mbox"></div>
+</div>
+
+<script>
+const RAW = [{"id":"006QO00000ebBOr","rep":"RF Associates","opco":"REN","assoc":"","owner":"Michaela Pounds","acct":"BAE Systems - Nashua, NH","acctType":"Customer","parent":"BAE Systems HQ - London, UK","acctOwner":"Bill Riddle","name":"943790","btype":"Repeat Business","ptype":"Existing Program","stage":"6 Booked - WON","amt":3594.97,"created":"1/9/2026","close":"2/18/2026","age":40.0,"stageDur":272.0,"createdBy":"Michaela Pounds","lead":"None","won":1,"lastAct":"","fcst":"Closed","hasProd":1,"push":0,"role":"Inside Sales","title":"Inside Sales Specialist","industry":"Aerospace & Defense","city":"Nashua","state":"New Hampshire","country":"United States","contact":"","ctitle":"","cemail":"","tier":"T1","play":"Core","focus":1,"desc":""},{"id":"006QO000011EFXZ","rep":"Protec","opco":"REN","assoc":"","owner":"Yvann Djemba","acct":"Safran France","acctType":"Customer","parent":"","acctOwner":"Yvann Djemba","name":"AEMQ-0005967 - SAFRAN Ka-band Isolator","btype":"New Customer (New Logo or Site Only)","ptype":"New Program","stage":"4 Quoted","amt":57340.05,"created":"9/3/2026","close":"12/31/2026","age":75.0,"stageDur":18.0,"createdBy":"Marin Ajduk","lead":"Referral - Rep","won":0,"lastAct":"11/13/2026","fcst":"Pipeline","hasProd":1,"push":2,"role":"Inside Sales","title":"Inside Sales Manager, EMEA","industry":"Aerospace & Defense","city":"Blagnac","state":"","country":"France","contact":"Adrien Frouin","ctitle":"Account Mngr ? ES, FR, BNL, CH, PT","cemail":"a.frouin@protec-semi.com","tier":"T2","play":"","focus":1,"desc":""},{"id":"006QO000010QhFJ","rep":"STG Group","opco":"REN","assoc":"","owner":"Marin Ajduk","acct":"IAI Group Israel","acctType":"Customer","parent":"","acctOwner":"Marin Ajduk","name":"Mabat Power Splitter 10A4NX-2S-S Space grade","btype":"Expansion (Existing Customer/Cross Sell)","ptype":"New Program","stage":"4 Quoted","amt":175000.0,"created":"8/26/2026","close":"11/30/2026","age":83.0,"stageDur":81.0,"createdBy":"Marin Ajduk","lead":"Referral - Rep","won":0,"lastAct":"11/6/2026","fcst":"Pipeline","hasProd":0,"push":1,"role":"Field Sales","title":"Director of Sales EMEA","industry":"Aerospace & Defense","city":"Tel Aviv","state":"","country":"Israel","contact":"Alex Zaid","ctitle":"RF Group Manager","cemail":"alex@stggroup.co.il","tier":"T1","play":"","focus":1,"desc":""},{"id":"006QO00000lUNQk","rep":"Pillar Marketing Group","opco":"REN","assoc":"Troy Kunau","owner":"Benjamin Hamerl","acct":"Firefly Aerospace","acctType":"Customer","parent":"","acctOwner":"Jack Smith","name":"AEMQ-0002036","btype":"New Customer (New Logo or Site Only)","ptype":"Existing Program","stage":"6 Booked - WON","amt":29362.09,"created":"3/17/2026","close":"6/8/2026","age":83.0,"stageDur":162.0,"createdBy":"Stephen Lee","lead":"None","won":1,"lastAct":"5/4/2026","fcst":"Closed","hasProd":1,"push":2,"role":"Field Sales","title":"Regional Sales Manager","industry":"Aerospace & Defense","city":"Leander","state":"Texas","country":"United States","contact":"Claire Brantley","ctitle":"","cemail":"cbrantley@dscosys.space","tier":"T2","play":"","focus":1,"desc":""},{"id":"006QO000011uGCH","rep":"STG Group","opco":"REN","assoc":"","owner":"Marin Ajduk","acct":"IAI Group Israel","acctType":"Customer","parent":"","acctOwner":"Marin Ajduk","name":"STG/MABAT/ X-BAND FILTER AEMQ-0006123","btype":"Expansion (Existing Customer/Cross Sell)","ptype":"Existing Program","stage":"3 Proposal","amt":177084.96,"created":"9/11/2026","close":"11/30/2026","age":67.0,"stageDur":67.0,"createdBy":"Stephen Lee","lead":"Referral - Other","won":0,"lastAct":"11/7/2026","fcst":"Pipeline","hasProd":1,"push":1,"role":"Field Sales","title":"Director of Sales EMEA","industry":"Aerospace & Defense","city":"Tel Aviv","state":"","country":"Israel","contact":"Alex Zaid","ctitle":"RF Group Manager","cemail":"alex@stggroup.co.il","tier":"T1","play":"","focus":1,"desc":""},{"id":"006QO00000m8kLN","rep":"ETSI","opco":"AEMI","assoc":"Matt Dickey","owner":"Bill Riddle","acct":"Northrop Grumman - Baltimore, MD","acctType":"Customer","parent":"Northrop Grumman HQ - Falls Church, VA","acctOwner":"Bill Riddle","name":"NGC BWI - ESPADA - Ferrite bead cross w/TWM - 4 parts","btype":"Expansion (Existing Customer/Cross Sell)","ptype":"New Program","stage":"4 Quoted","amt":200000.0,"created":"3/24/2026","close":"12/18/2026","age":238.0,"stageDur":151.0,"createdBy":"Bill Riddle","lead":"None","won":0,"lastAct":"","fcst":"Pipeline","hasProd":0,"push":3,"role":"Field Sales","title":"Regional Sales Manager","industry":"Aerospace & Defense","city":"Baltimore","state":"Maryland","country":"United States","contact":"","ctitle":"","cemail":"","tier":"T1","play":"Core","focus":1,"desc":""},{"id":"006QO00000m7eEn","rep":"ETSI","opco":"REN","assoc":"Matt Dickey","owner":"Bill Riddle","acct":"Northrop Grumman - Baltimore, MD","acctType":"Customer","parent":"Northrop Grumman HQ - Falls Church, VA","acctOwner":"Bill Riddle","name":"NGC BWI - Program ESPADA - DBwave Divider cross","btype":"Expansion (Existing Customer/Cross Sell)","ptype":"New Program","stage":"3 Proposal","amt":170000.0,"created":"3/24/2026","close":"12/30/2026","age":238.0,"stageDur":151.0,"createdBy":"Bill Riddle","lead":"Self Prospecting","won":0,"lastAct":"10/30/2026","fcst":"Pipeline","hasProd":0,"push":2,"role":"Field Sales","title":"Regional Sales Manager","industry":"Aerospace & Defense","city":"Baltimore","state":"Maryland","country":"United States","contact":"","ctitle":"","cemail":"","tier":"T1","play":"Core","focus":1,"desc":""},{"id":"006QO00000sEwMp","rep":"ETSI","opco":"CEN","assoc":"","owner":"Nick Perosino","acct":"VPT, Inc.","acctType":"Customer","parent":"","acctOwner":"Jack Smith","name":"CP343V-HCEN1509-CM","btype":"Expansion (Existing Customer/Cross Sell)","ptype":"New Program","stage":"6 Booked - WON","amt":13000.0,"created":"5/22/2026","close":"5/22/2026","age":0.0,"stageDur":179.0,"createdBy":"Nick Perosino","lead":"Referral - Rep","won":1,"lastAct":"","fcst":"Closed","hasProd":0,"push":0,"role":"Field Application Engineer","title":"New Product Development Manager","industry":"Aerospace & Defense","city":"Blacksburg","state":"Virginia","country":"United States","contact":"","ctitle":"","cemail":"","tier":"T2","play":"","focus":1,"desc":""},{"id":"006QO00000vZQYK","rep":"TSC Kruvand Technologies","opco":"AEMI","assoc":"Catherine","owner":"Benjamin Hamerl","acct":"Spartronics - Williamsport, PA","acctType":"Customer","parent":"Spartronics HQ - Fairport, NY","acctOwner":"Cris Pike","name":"JDM 2606-24558","btype":"Expansion (Existing Customer/Cross Sell)","ptype":"Unknown","stage":"6 Booked - WON","amt":9500.0,"created":"6/29/2026","close":"6/29/2026","age":0.0,"stageDur":132.0,"createdBy":"Jeff Montgomery","lead":"Quote Request","won":1,"lastAct":"","fcst":"Closed","hasProd":1,"push":0,"role":"Field Sales","title":"Regional Sales Manager","industry":"Aerospace & Defense","city":"Williamsport","state":"Pennsylvania","country":"United States","contact":"","ctitle":"","cemail":"","tier":"T2","play":"Channel","focus":0,"desc":""},{"id":"006QO00000y5tkT","rep":"Pillar Marketing Group","opco":"AEMI","assoc":"Troy","owner":"Benjamin Hamerl","acct":"Lockheed Martin - Littleton, CO","acctType":"Customer","parent":"Lockheed Martin HQ - Bethesda, MD","acctOwner":"Benjamin Hamerl","name":"NLG 2607-04073","btype":"Expansion (Existing Customer/Cross Sell)","ptype":"Unknown","stage":"6 Booked - WON","amt":1075.23,"created":"7/29/2026","close":"9/25/2026","age":58.0,"stageDur":53.0,"createdBy":"Johnny Roscher","lead":"Quote Request","won":1,"lastAct":"8/26/2026","fcst":"Closed","hasProd":0,"push":1,"role":"Field Sales","title":"Regional Sales Manager","industry":"Aerospace & Defense","city":"Littleton","state":"Colorado","country":"United States","contact":"","ctitle":"","cemail":"","tier":"T1","play":"Core","focus":1,"desc":""},{"id":"006QO00000vDXF5","rep":"TSC Kruvand Technologies","opco":"AEMI","assoc":"Alicia","owner":"Johnny Roscher","acct":"General Dynamics - Scottsdale, AZ","acctType":"Customer","parent":"General Dynamics HQ - Reston, VA","acctOwner":"Benjamin Hamerl","name":"NLG 2606-03018","btype":"Expansion (Existing Customer/Cross Sell)","ptype":"Unknown","stage":"6 Booked - WON","amt":28480.24,"created":"6/25/2026","close":"6/25/2026","age":0.0,"stageDur":118.0,"createdBy":"Johnny Roscher","lead":"Referral - Rep","won":1,"lastAct":"","fcst":"Closed","hasProd":1,"push":0,"role":"Inside Sales","title":"","industry":"Aerospace & Defense","city":"Scottsdale","state":"Arizona","country":"United States","contact":"","ctitle":"","cemail":"","tier":"T1","play":"Core","focus":0,"desc":""},{"id":"006QO00000zGbJq","rep":"Pillar Marketing Group","opco":"REN","assoc":"Troy Kunau","owner":"Benjamin Hamerl","acct":"Blue Origin HQ - Kent, WA","acctType":"Customer","parent":"","acctOwner":"Benjamin Hamerl","name":"AEMQ-0005533 - Blue Origin CO MK2 Comms Subsystems RF Switch","btype":"New Customer (New Logo or Site Only)","ptype":"Existing Program","stage":"5 Commit","amt":190201.35,"created":"8/12/2026","close":"11/30/2026","age":97.0,"stageDur":25.0,"createdBy":"Stephen Lee","lead":"Referral - Rep","won":0,"lastAct":"4/29/2027","fcst":"Commit","hasProd":0,"push":2,"role":"Field Sales","title":"Regional Sales Manager","industry":"Aerospace & Defense","city":"Kent","state":"Washington","country":"United States","contact":"","ctitle":"","cemail":"","tier":"T1","play":"Anchor","focus":1,"desc":""},{"id":"006QO000017XiSL","rep":"Pillar Marketing Group","opco":"REN","assoc":"Troy Kunau","owner":"Benjamin Hamerl","acct":"Blue Origin HQ - Kent, WA","acctType":"Customer","parent":"","acctOwner":"Benjamin Hamerl","name":"AEMQ-0005533 - Blue Origin CO MK2 Comms Subsystems RF Switch","btype":"New Customer (New Logo or Site Only)","ptype":"Existing Program","stage":"6 Booked - WON","amt":117159.57,"created":"11/9/2026","close":"11/9/2026","age":0.0,"stageDur":8.0,"createdBy":"Benjamin Hamerl","lead":"Referral - Rep","won":1,"lastAct":"","fcst":"Closed","hasProd":0,"push":0,"role":"Field Sales","title":"Regional Sales Manager","industry":"Aerospace & Defense","city":"Kent","state":"Washington","country":"United States","contact":"","ctitle":"","cemail":"","tier":"T1","play":"Anchor","focus":1,"desc":""},{"id":"006QO000016Ou6j","rep":"Pillar Marketing Group","opco":"REN","assoc":"Troy Kunau","owner":"Benjamin Hamerl","acct":"Blue Origin HQ - Kent, WA","acctType":"Customer","parent":"","acctOwner":"Benjamin Hamerl","name":"AEMQ-0005533 - Blue Origin CO MK2 Comms Subsystems RF Switch","btype":"New Customer (New Logo or Site Only)","ptype":"Existing Program","stage":"6 Booked - WON","amt":465684.24,"created":"10/29/2026","close":"10/29/2026","age":0.0,"stageDur":18.0,"createdBy":"Benjamin Hamerl","lead":"Referral - Rep","won":1,"lastAct":"","fcst":"Closed","hasProd":0,"push":0,"role":"Field Sales","title":"Regional Sales Manager","industry":"Aerospace & Defense","city":"Kent","state":"Washington","country":"United States","contact":"","ctitle":"","cemail":"","tier":"T1","play":"Anchor","focus":1,"desc":""},{"id":"006QO000016OrOz","rep":"Pillar Marketing Group","opco":"REN","assoc":"Troy Kunau","owner":"Benjamin Hamerl","acct":"Blue Origin HQ - Kent, WA","acctType":"Customer","parent":"","acctOwner":"Benjamin Hamerl","name":"AEMQ-0005533 - Blue Origin CO MK2 Comms Subsystems RF Switch","btype":"New Customer (New Logo or Site Only)","ptype":"Existing Program","stage":"6 Booked - WON","amt":24227.0,"created":"10/29/2026","close":"10/29/2026","age":0.0,"stageDur":19.0,"createdBy":"Benjamin Hamerl","lead":"Referral - Rep","won":1,"lastAct":"","fcst":"Closed","hasProd":0,"push":0,"role":"Field Sales","title":"Regional Sales Manager","industry":"Aerospace & Defense","city":"Kent","state":"Washington","country":"United States","contact":"","ctitle":"","cemail":"","tier":"T1","play":"Anchor","focus":1,"desc":""},{"id":"006QO00000acW29","rep":"Mel Foster Company","opco":"REN","assoc":"","owner":"Benjamin Hamerl","acct":"Honeywell Aerospace - Olathe, KS","acctType":"Customer","parent":"Honeywell Aerospace HQ - Phoenix, AZ","acctOwner":"Benjamin Hamerl","name":"Obsolete Switch Crosses","btype":"Expansion (Existing Customer/Cross Sell)","ptype":"Existing Program","stage":"6 Booked - WON","amt":6750.0,"created":"11/14/2025","close":"4/20/2026","age":157.0,"stageDur":211.0,"createdBy":"Benjamin Hamerl","lead":"Referral - Rep","won":1,"lastAct":"","fcst":"Closed","hasProd":0,"push":1,"role":"Field Sales","title":"Regional Sales Manager","industry":"Aerospace & Defense","city":"Olathe","state":"Kansas","country":"United States","contact":"","ctitle":"","cemail":"","tier":"T1","play":"Core","focus":1,"desc":""},{"id":"006QO00000jplsd","rep":"QuadRep-Ferrari Technologies Inc","opco":"REN","assoc":"","owner":"Benjamin Hamerl","acct":"L3Harris Telemetry & RF Products","acctType":"Customer","parent":"L3Harris HQ - Melbourne, FL","acctOwner":"Benjamin Hamerl","name":"L3Harris-Isolator-San Diego - Feb 2026","btype":"Expansion (Existing Customer/Cross Sell)","ptype":"New Program","stage":"6 Booked - WON","amt":12000.0,"created":"2/27/2026","close":"2/27/2026","age":0.0,"stageDur":263.0,"createdBy":"Benjamin Hamerl","lead":"Zoominfo","won":1,"lastAct":"","fcst":"Closed","hasProd":0,"push":0,"role":"Field Sales","title":"Regional Sales Manager","industry":"Aerospace & Defense","city":"San Diego","state":"California","country":"United States","contact":"Tom Zarian","ctitle":"Manager Electrical Engineer","cemail":"tom.zarian@l3harris.com","tier":"T1","play":"Core","focus":0,"desc":""},{"id":"006QO000018Tt41","rep":"TSC Kruvand Technologies","opco":"AEMI","assoc":"Alicia Doten","owner":"Jason Cabanyog","acct":"Viasat - Tempe, AZ","acctType":"Customer","parent":"","acctOwner":"Jason Cabanyog","name":"Viasat - Tempe - TWM - 2026 (JDM 2611-24997)","btype":"Expansion (Existing Customer/Cross Sell)","ptype":"Unknown","stage":"3 Proposal","amt":5200.0,"created":"11/17/2026","close":"12/16/2026","age":0.0,"stageDur":0.0,"createdBy":"Benjamin Hamerl","lead":"Referral - Rep","won":0,"lastAct":"","fcst":"Pipeline","hasProd":0,"push":0,"role":"Field Sales","title":"Territory Account Manager","industry":"Aerospace & Defense","city":"Tempe","state":"Arizona","country":"United States","contact":"Colin Jacobson","ctitle":"Associate Procurement Specialist","cemail":"colin.jacobson@viasat.com","tier":"T2","play":"","focus":1,"desc":""},{"id":"006QO00000wNhXV","rep":"e-Components","opco":"REN","assoc":"Nick Abrams","owner":"Bill Riddle","acct":"Mnemonics Inc.","acctType":"Customer","parent":"","acctOwner":"Bill Riddle","name":"Mnemonics - Airborne 1000 watt amplifier - Combo AEMQ-0004543","btype":"New Customer (New Logo or Site Only)","ptype":"New Program","stage":"6 Booked - WON","amt":29416.7,"created":"7/8/2026","close":"9/21/2026","age":75.0,"stageDur":57.0,"createdBy":"Michaela Pounds","lead":"Referral - Rep","won":1,"lastAct":"","fcst":"Closed","hasProd":1,"push":3,"role":"Field Sales","title":"Regional Sales Manager","industry":"Aerospace & Defense","city":"Melbourne","state":"Florida","country":"United States","contact":"Madjid Belkerdid","ctitle":"Principal Systems Engineer","cemail":"madjid.belkerdid@mnemonics-inc.com","tier":"T1","play":"","focus":0,"desc":""},{"id":"006QO00000k8VVa","rep":"Mel Foster Company","opco":"CEN","assoc":"Jim Eken","owner":"Bill Riddle","acct":"Collins Aerospace - Cedar Rapids, IA","acctType":"Customer","parent":"RTX (Raytheon) HQ","acctOwner":"Bill Riddle","name":"Collins - Cedar Rapids - 2n5461","btype":"New Customer (New Logo or Site Only)","ptype":"New Program","stage":"6 Booked - WON","amt":9875.0,"created":"3/3/2026","close":"4/29/2026","age":57.0,"stageDur":202.0,"createdBy":"Bill Riddle","lead":"Self Prospecting","won":1,"lastAct":"","fcst":"Closed","hasProd":0,"push":1,"role":"Field Sales","title":"Regional Sales Manager","industry":"Aerospace & Defense","city":"Cedar Rapids","state":"Iowa","country":"United States","contact":"","ctitle":"","cemail":"","tier":"T1","play":"Core","focus":1,"desc":""},{"id":"006QO000010eCQ9","rep":"e-Components","opco":"REN","assoc":"Nick Abrams","owner":"Bill Riddle","acct":"L3Harris - Palm Bay, FL","acctType":"Customer","parent":"L3Harris HQ - Melbourne, FL","acctOwner":"Bill Riddle","name":"L3 Harris Palm Bay - APEX IRAD - Isolator/Filter/Switch","btype":"Expansion (Existing Customer/Cross Sell)","ptype":"New Program","stage":"3 Proposal","amt":150000.0,"created":"8/28/2026","close":"12/25/2026","age":81.0,"stageDur":81.0,"createdBy":"Bill Riddle","lead":"Self Prospecting","won":0,"lastAct":"11/1/2026","fcst":"Pipeline","hasProd":0,"push":1,"role":"Field Sales","title":"Regional Sales Manager","industry":"Aerospace & Defense","city":"Palm Bay","state":"Florida","country":"United States","contact":"","ctitle":"","cemail":"","tier":"T1","play":"Core","focus":1,"desc":""},{"id":"006QO00000zFtsK","rep":"e-Components","opco":"AEMI","assoc":"Nick Abrams","owner":"Bill Riddle","acct":"Lockheed Martin - Orlando, FL","acctType":"Customer","parent":"Lockheed Martin HQ - Bethesda, MD","acctOwner":"Bill Riddle","name":"LMCO Orlando - TWM Chip power splitter -  PS3216T2-R50-FD","btype":"Expansion (Existing Customer/Cross Sell)","ptype":"New Program","stage":"6 Booked - WON","amt":79520.0,"created":"8/12/2026","close":"8/20/2026","age":8.0,"stageDur":6.0,"createdBy":"Bill Riddle","lead":"Self Prospecting","won":1,"lastAct":"10/27/2026","fcst":"Closed","hasProd":1,"push":1,"role":"Field Sales","title":"Regional Sales Manager","industry":"Aerospace & Defense","city":"Orlando","state":"Florida","country":"United States","contact":"","ctitle":"","cemail":"","tier":"T1","play":"Core","focus":1,"desc":"Booked 8/20/2026 in NetSuite as SO12865 on Lockheed Martin PO 4100043095 under quote JDM 2608-24723R1 (revision of JDM 2608-24723, attached to this opportunity).\n2,000 pcs PS3216T2-R50-FD-TWMProd-FG, $79,520 ($39.76 ea).\nShips to Lockheed Martin, Archbald, PA (MFC); scheduled ship 5/11/2027.\nRepeat part for Lockheed (ordered since 2018); largest order to date.\nThe same booking is also Closed Won o"},{"id":"006QO00000yshbh","rep":"e-Components","opco":"AEMI","assoc":"Nick Abrams","owner":"Bill Riddle","acct":"Lockheed Martin - Orlando, FL","acctType":"Customer","parent":"Lockheed Martin HQ - Bethesda, MD","acctOwner":"Bill Riddle","name":"LMCO Orlando - PAC3 -  Mosfet TWM/Upscreen STL42P6LLF6-AEM","btype":"Expansion (Existing Customer/Cross Sell)","ptype":"Existing Program","stage":"6 Booked - WON","amt":212223.0,"created":"8/7/2026","close":"9/10/2026","age":34.0,"stageDur":68.0,"createdBy":"Bill Riddle","lead":"Self Prospecting","won":1,"lastAct":"","fcst":"Closed","hasProd":1,"push":0,"role":"Field Sales","title":"Regional Sales Manager","industry":"Aerospace & Defense","city":"Orlando","state":"Florida","country":"United States","contact":"","ctitle":"","cemail":"","tier":"T1","play":"Core","focus":1,"desc":""},{"id":"006QO00000yB8z0","rep":"e-Components","opco":"REN","assoc":"Nick Abrams","owner":"Bill Riddle","acct":"Mnemonics Inc.","acctType":"Customer","parent":"","acctOwner":"Bill Riddle","name":"Mnemonics - Airborne 1000 watt amplifier - Filters 16A2BB","btype":"New Customer (New Logo or Site Only)","ptype":"New Program","stage":"6 Booked - WON","amt":8139.4,"created":"7/30/2026","close":"9/21/2026","age":53.0,"stageDur":57.0,"createdBy":"Bill Riddle","lead":"Self Prospecting","won":1,"lastAct":"","fcst":"Closed","hasProd":1,"push":3,"role":"Field Sales","title":"Regional Sales Manager","industry":"Aerospace & Defense","city":"Melbourne","state":"Florida","country":"United States","contact":"","ctitle":"","cemail":"","tier":"T1","play":"","focus":0,"desc":""},{"id":"006QO00000vn0kP","rep":"e-Components","opco":"REN","assoc":"Nick Abrams","owner":"Bill Riddle","acct":"L3Harris - Palm Bay, FL","acctType":"Customer","parent":"L3Harris HQ - Melbourne, FL","acctOwner":"Bill Riddle","name":"L3 Harris Melbourne - TD3 - Isolator/Filter/Switch - AEMQ-0004204","btype":"Expansion (Existing Customer/Cross Sell)","ptype":"New Program","stage":"3 Proposal","amt":250000.0,"created":"7/1/2026","close":"12/18/2026","age":139.0,"stageDur":70.0,"createdBy":"Bill Riddle","lead":"Self Prospecting","won":0,"lastAct":"11/1/2026","fcst":"Pipeline","hasProd":0,"push":1,"role":"Field Sales","title":"Regional Sales Manager","industry":"Aerospace & Defense","city":"Palm Bay","state":"Florida","country":"United States","contact":"","ctitle":"","cemail":"","tier":"T1","play":"Core","focus":1,"desc":""},{"id":"006QO00000vn0Kb","rep":"e-Components","opco":"REN","assoc":"Nick Abrams","owner":"Bill Riddle","acct":"L3Harris - Palm Bay, FL","acctType":"Customer","parent":"L3Harris HQ - Melbourne, FL","acctOwner":"Bill Riddle","name":"L3 Harris Melbourne - AMDT3 TR3TRK - Filters- AEMQ-0004203","btype":"Expansion (Existing Customer/Cross Sell)","ptype":"New Program","stage":"4 Quoted","amt":217067.31,"created":"7/1/2026","close":"12/16/2026","age":139.0,"stageDur":70.0,"createdBy":"Bill Riddle","lead":"Self Prospecting","won":0,"lastAct":"11/10/2026","fcst":"Pipeline","hasProd":1,"push":4,"role":"Field Sales","title":"Regional Sales Manager","industry":"Aerospace & Defense","city":"Palm Bay","state":"Florida","country":"United States","contact":"Bola Fabayo","ctitle":"Senior Associate, Procurement","cemail":"bola.fabayo@l3harris.com","tier":"T1","play":"Core","focus":1,"desc":""},{"id":"006QO000015LDYL","rep":"ETSI","opco":"AEMI","assoc":"Matt Dickey","owner":"Bill Riddle","acct":"Northrop Grumman - Baltimore, MD","acctType":"Customer","parent":"Northrop Grumman HQ - Falls Church, VA","acctOwner":"Bill Riddle","name":"NGC BWI - Grizzly SDR - TWM HF0402B102R-10","btype":"Expansion (Existing Customer/Cross Sell)","ptype":"New Program","stage":"2 Solutioning","amt":20000.0,"created":"10/19/2026","close":"12/16/2026","age":29.0,"stageDur":29.0,"createdBy":"Bill Riddle","lead":"Self Prospecting","won":0,"lastAct":"","fcst":"Pipeline","hasProd":0,"push":1,"role":"Field Sales","title":"Regional Sales Manager","industry":"Aerospace & Defense","city":"Baltimore","state":"Maryland","country":"United States","contact":"","ctitle":"","cemail":"","tier":"T1","play":"Core","focus":1,"desc":""},{"id":"006QO00000y5WWA","rep":"ETSI","opco":"AEMI","assoc":"Matt Dickey","owner":"Bill Riddle","acct":"Northrop Grumman - Baltimore, MD","acctType":"Customer","parent":"Northrop Grumman HQ - Falls Church, VA","acctOwner":"Bill Riddle","name":"NGC BWI - Speargun - TWM HZ0805E601R-10-AEM","btype":"Expansion (Existing Customer/Cross Sell)","ptype":"Existing Program","stage":"6 Booked - WON","amt":49619.3,"created":"7/29/2026","close":"8/11/2026","age":13.0,"stageDur":98.0,"createdBy":"Bill Riddle","lead":"Self Prospecting","won":1,"lastAct":"","fcst":"Closed","hasProd":1,"push":0,"role":"Field Sales","title":"Regional Sales Manager","industry":"Aerospace & Defense","city":"Baltimore","state":"Maryland","country":"United States","contact":"","ctitle":"","cemail":"","tier":"T1","play":"Core","focus":1,"desc":""},{"id":"006QO00000sG6NJ","rep":"ETSI","opco":"AEMI","assoc":"Matt Dickey","owner":"Bill Riddle","acct":"Northrop Grumman - Baltimore, MD","acctType":"Customer","parent":"Northrop Grumman HQ - Falls Church, VA","acctOwner":"Bill Riddle","name":"NGC BWI - Espada -  TWM 560L104YTT-AEM","btype":"Expansion (Existing Customer/Cross Sell)","ptype":"New Program","stage":"4 Quoted","amt":22140.0,"created":"5/22/2026","close":"12/16/2026","age":179.0,"stageDur":151.0,"createdBy":"Bill Riddle","lead":"Self Prospecting","won":0,"lastAct":"11/18/2026","fcst":"Pipeline","hasProd":1,"push":3,"role":"Field Sales","title":"Regional Sales Manager","industry":"Aerospace & Defense","city":"Baltimore","state":"Maryland","country":"United States","contact":"","ctitle":"","cemail":"","tier":"T1","play":"Core","focus":1,"desc":""},{"id":"006QO00000koool","rep":"ETSI","opco":"AEMI","assoc":"Matt Dickey","owner":"Bill Riddle","acct":"Northrop Grumman - Baltimore, MD","acctType":"Customer","parent":"Northrop Grumman HQ - Falls Church, VA","acctOwner":"Bill Riddle","name":"ETSI - NGC BWI - TWM/ Up screen - TDK MMZ1608A222BTA00","btype":"Expansion (Existing Customer/Cross Sell)","ptype":"New Program","stage":"2 Solutioning","amt":30000.0,"created":"3/10/2026","close":"12/30/2026","age":252.0,"stageDur":244.0,"createdBy":"Bill Riddle","lead":"Referral - Rep","won":0,"lastAct":"","fcst":"Pipeline","hasProd":0,"push":0,"role":"Field Sales","title":"Regional Sales Manager","industry":"Aerospace & Defense","city":"Baltimore","state":"Maryland","country":"United States","contact":"","ctitle":"","cemail":"","tier":"T1","play":"Core","focus":1,"desc":""},{"id":"006QO00000mUQKn","rep":"ETSI","opco":"AEMI","assoc":"Matt Dickey","owner":"Bill Riddle","acct":"Northrop Grumman - Baltimore, MD","acctType":"Customer","parent":"Northrop Grumman HQ - Falls Church, VA","acctOwner":"Bill Riddle","name":"ETSI-NGC BWI - Speargun - JDM 2603-24168","btype":"Expansion (Existing Customer/Cross Sell)","ptype":"Existing Program","stage":"4 Quoted","amt":9375.0,"created":"3/27/2026","close":"12/16/2026","age":235.0,"stageDur":235.0,"createdBy":"Lynda Attison","lead":"Referral - Rep","won":0,"lastAct":"","fcst":"Pipeline","hasProd":1,"push":5,"role":"Field Sales","title":"Regional Sales Manager","industry":"Aerospace & Defense","city":"Baltimore","state":"Maryland","country":"United States","contact":"","ctitle":"","cemail":"","tier":"T1","play":"Core","focus":1,"desc":""},{"id":"006QO000015i8T7","rep":"e-Components","opco":"AEMI","assoc":"Nick Abrams","owner":"Jack Smith","acct":"CesiumAstro - Melbourne, FL","acctType":"Customer","parent":"CesiumAstro HQ - Austin, TX","acctOwner":"Jack Smith","name":"JDM 2610-24915 - CesiumAstro - Florida - BFCN-2275+ Re-plate (C315-06166)","btype":"New Customer (New Logo or Site Only)","ptype":"Existing Program","stage":"3 Proposal","amt":5830.0,"created":"10/22/2026","close":"11/13/2026","age":26.0,"stageDur":26.0,"createdBy":"Jack Smith","lead":"Referral - Rep","won":0,"lastAct":"11/11/2026","fcst":"Pipeline","hasProd":0,"push":0,"role":"Field Sales","title":"Senior Territory Account Manager","industry":"Aerospace & Defense","city":"Melbourne","state":"Florida","country":"United States","contact":"","ctitle":"","cemail":"","tier":"T2","play":"Core","focus":1,"desc":""},{"id":"006QO000010soCD","rep":"TSC Kruvand Technologies","opco":"AEMI","assoc":"Alicia","owner":"Johnny Roscher","acct":"General Dynamics - Scottsdale, AZ","acctType":"Customer","parent":"General Dynamics HQ - Reston, VA","acctOwner":"Benjamin Hamerl","name":"JDR 2608-04139","btype":"Repeat Business","ptype":"Unknown","stage":"6 Booked - WON","amt":63156.72,"created":"8/31/2026","close":"9/23/2026","age":23.0,"stageDur":53.0,"createdBy":"Johnny Roscher","lead":"Quote Request","won":1,"lastAct":"","fcst":"Closed","hasProd":1,"push":0,"role":"Inside Sales","title":"","industry":"Aerospace & Defense","city":"Scottsdale","state":"Arizona","country":"United States","contact":"","ctitle":"","cemail":"","tier":"T1","play":"Core","focus":0,"desc":""},{"id":"006QO00000xXgjG","rep":"TSC Kruvand Technologies","opco":"AEMI","assoc":"Alicia","owner":"Johnny Roscher","acct":"General Dynamics - Scottsdale, AZ","acctType":"Customer","parent":"General Dynamics HQ - Reston, VA","acctOwner":"Benjamin Hamerl","name":"NLG 2606-03018","btype":"Expansion (Existing Customer/Cross Sell)","ptype":"Unknown","stage":"6 Booked - WON","amt":131995.2,"created":"7/22/2026","close":"7/22/2026","age":0.0,"stageDur":118.0,"createdBy":"Benjamin Hamerl","lead":"Referral - Rep","won":1,"lastAct":"","fcst":"Closed","hasProd":0,"push":1,"role":"Inside Sales","title":"","industry":"Aerospace & Defense","city":"Scottsdale","state":"Arizona","country":"United States","contact":"","ctitle":"","cemail":"","tier":"T1","play":"Core","focus":0,"desc":""},{"id":"006QO00000T0Vfr","rep":"Pillar Marketing Group","opco":"REN","assoc":"Troy Kunau","owner":"Benjamin Hamerl","acct":"General Atomics","acctType":"Customer","parent":"","acctOwner":"Benjamin Hamerl","name":"943518","btype":"New Customer (New Logo or Site Only)","ptype":"New Program","stage":"6 Booked - WON","amt":173056.98,"created":"7/23/2025","close":"3/20/2026","age":240.0,"stageDur":242.0,"createdBy":"Michaela Pounds","lead":"Referral - Other","won":1,"lastAct":"","fcst":"Closed","hasProd":1,"push":5,"role":"Field Sales","title":"Regional Sales Manager","industry":"Aerospace & Defense","city":"Centennial","state":"Colorado","country":"United States","contact":"Ben Cuatok","ctitle":"Buyer","cemail":"ben.cuatok@ga.com","tier":"T1","play":"","focus":0,"desc":""},{"id":"006QO00000lSjlV","rep":"RF Associates","opco":"REN","assoc":"Russ Cooley","owner":"Michaela Pounds","acct":"Raytheon RTX - Andover, MA","acctType":"Customer","parent":"RTX (Raytheon) HQ","acctOwner":"Bill Riddle","name":"AEMQ-0002033 Rev. B","btype":"Repeat Business","ptype":"Existing Program","stage":"6 Booked - WON","amt":204691.0,"created":"3/17/2026","close":"3/30/2026","age":13.0,"stageDur":232.0,"createdBy":"Michaela Pounds","lead":"None","won":1,"lastAct":"","fcst":"Closed","hasProd":1,"push":0,"role":"Inside Sales","title":"Inside Sales Specialist","industry":"Aerospace & Defense","city":"Andover","state":"Massachusetts","country":"United States","contact":"Courtney Desimas","ctitle":"Supply Chain Management Principal Specialist","cemail":"courtney.desimas@rtx.com","tier":"T1","play":"Core","focus":1,"desc":""},{"id":"006QO00000erB7y","rep":"RF Associates","opco":"REN","assoc":"Russ Cooley","owner":"Michaela Pounds","acct":"Raytheon RTX - Andover, MA","acctType":"Customer","parent":"RTX (Raytheon) HQ","acctOwner":"Bill Riddle","name":"943797","btype":"Repeat Business","ptype":"Existing Program","stage":"6 Booked - WON","amt":65926.12,"created":"1/13/2026","close":"1/29/2026","age":16.0,"stageDur":292.0,"createdBy":"Michaela Pounds","lead":"None","won":1,"lastAct":"","fcst":"Closed","hasProd":1,"push":0,"role":"Inside Sales","title":"Inside Sales Specialist","industry":"Aerospace & Defense","city":"Andover","state":"Massachusetts","country":"United States","contact":"","ctitle":"","cemail":"","tier":"T1","play":"Core","focus":1,"desc":""},{"id":"006QO00000oMT3N","rep":"G Squared Technologies","opco":"REN","assoc":"Crissy Hanes","owner":"Michaela Pounds","acct":"Northrop Grumman - Baltimore, MD","acctType":"Customer","parent":"Northrop Grumman HQ - Falls Church, VA","acctOwner":"Bill Riddle","name":"AEMQ-0002437 REV. A","btype":"Repeat Business","ptype":"Existing Program","stage":"6 Booked - WON","amt":9445.0,"created":"4/15/2026","close":"5/5/2026","age":20.0,"stageDur":196.0,"createdBy":"Michaela Pounds","lead":"None","won":1,"lastAct":"4/17/2026","fcst":"Closed","hasProd":1,"push":0,"role":"Inside Sales","title":"Inside Sales Specialist","industry":"Aerospace & Defense","city":"Baltimore","state":"Maryland","country":"United States","contact":"Kristine Haddad","ctitle":"Supply Chain Subcontrct Specialist","cemail":"kristine.haddad@ngc.com","tier":"T1","play":"Core","focus":1,"desc":""},{"id":"006QO00000hW58f","rep":"G Squared Technologies","opco":"REN","assoc":"Crissy Hanes","owner":"Michaela Pounds","acct":"Northrop Grumman - Baltimore, MD","acctType":"Customer","parent":"Northrop Grumman HQ - Falls Church, VA","acctOwner":"Bill Riddle","name":"943832","btype":"Repeat Business","ptype":"Existing Program","stage":"6 Booked - WON","amt":28018.3,"created":"2/3/2026","close":"3/27/2026","age":52.0,"stageDur":235.0,"createdBy":"Michaela Pounds","lead":"None","won":1,"lastAct":"3/19/2026","fcst":"Closed","hasProd":1,"push":0,"role":"Inside Sales","title":"Inside Sales Specialist","industry":"Aerospace & Defense","city":"Baltimore","state":"Maryland","country":"United States","contact":"","ctitle":"","cemail":"","tier":"T1","play":"Core","focus":1,"desc":""},{"id":"006QO00000lnTAg","rep":"RF Associates","opco":"REN","assoc":"Kevin Taylor","owner":"Michaela Pounds","acct":"Microchip - Beverly, MA","acctType":"Customer","parent":"","acctOwner":"Jack Smith","name":"AEMQ-0002073","btype":"Repeat Business","ptype":"Existing Program","stage":"6 Booked - WON","amt":53515.0,"created":"3/20/2026","close":"3/23/2026","age":3.0,"stageDur":239.0,"createdBy":"Michaela Pounds","lead":"Referral - Rep","won":1,"lastAct":"","fcst":"Closed","hasProd":1,"push":0,"role":"Inside Sales","title":"Inside Sales Specialist","industry":"Aerospace & Defense","city":"Beverly","state":"Massachusetts","country":"United States","contact":"Margaret Mckenzie","ctitle":"Supply Senior Analyst","cemail":"margaret.mckenzie@microchip.com","tier":"T2","play":"","focus":0,"desc":""},{"id":"006QO00000j3nzy","rep":"Pillar Marketing Group","opco":"REN","assoc":"Troy Kunau","owner":"Michaela Pounds","acct":"Radiometrics Corporation","acctType":"Customer","parent":"","acctOwner":"Jason Cabanyog","name":"943857","btype":"Repeat Business","ptype":"Existing Program","stage":"6 Booked - WON","amt":62502.25,"created":"2/19/2026","close":"6/19/2026","age":120.0,"stageDur":151.0,"createdBy":"Michaela Pounds","lead":"None","won":1,"lastAct":"6/18/2026","fcst":"Closed","hasProd":1,"push":4,"role":"Inside Sales","title":"Inside Sales Specialist","industry":"Aerospace & Defense","city":"Frederick","state":"Colorado","country":"United States","contact":"","ctitle":"","cemail":"","tier":"T2","play":"","focus":0,"desc":""},{"id":"006QO00000zllRl","rep":"ETSI","opco":"AEMI","assoc":"Matt Dickey","owner":"Bill Riddle","acct":"Vallen Canada Inc","acctType":"Customer","parent":"","acctOwner":"Cris Pike","name":"JDM 2608-24749 - NGC BWI Speargun Upscreen","btype":"Expansion (Existing Customer/Cross Sell)","ptype":"Existing Program","stage":"6 Booked - WON","amt":127467.0,"created":"8/18/2026","close":"9/17/2026","age":30.0,"stageDur":70.0,"createdBy":"Jeff Montgomery","lead":"Quote Request","won":1,"lastAct":"","fcst":"Closed","hasProd":1,"push":0,"role":"Field Sales","title":"Regional Sales Manager","industry":"Aerospace & Defense","city":"Pointe-Claire","state":"Quebec","country":"Canada","contact":"","ctitle":"","cemail":"","tier":"","play":"","focus":0,"desc":""},{"id":"006QO00000jicqr","rep":"ETSI","opco":"AEMI","assoc":"","owner":"Jessica Stamm","acct":"Northrop Grumman - Baltimore, MD","acctType":"Customer","parent":"Northrop Grumman HQ - Falls Church, VA","acctOwner":"Bill Riddle","name":"JDM 2602-24028R1","btype":"Repeat Business","ptype":"Unknown","stage":"6 Booked - WON","amt":2301120.0,"created":"2/26/2026","close":"3/6/2026","age":8.0,"stageDur":256.0,"createdBy":"Jessica Stamm","lead":"None","won":1,"lastAct":"","fcst":"Closed","hasProd":1,"push":0,"role":"","title":"","industry":"Aerospace & Defense","city":"Baltimore","state":"Maryland","country":"United States","contact":"","ctitle":"","cemail":"","tier":"T1","play":"Core","focus":1,"desc":""},{"id":"006QO00000m1nPd","rep":"Pillar Marketing Group","opco":"REN","assoc":"Troy Kunau","owner":"Stephen Lee","acct":"General Atomics","acctType":"Customer","parent":"","acctOwner":"Benjamin Hamerl","name":"AEMQ-0002081","btype":"Expansion (Existing Customer/Cross Sell)","ptype":"New Program","stage":"6 Booked - WON","amt":11909.99,"created":"3/23/2026","close":"4/20/2026","age":28.0,"stageDur":211.0,"createdBy":"Stephen Lee","lead":"Referral - Other","won":1,"lastAct":"","fcst":"Closed","hasProd":1,"push":0,"role":"Field Application Engineer","title":"Technical Sales Engineer","industry":"Aerospace & Defense","city":"Centennial","state":"Colorado","country":"United States","contact":"Ben Cuatok","ctitle":"Buyer","cemail":"ben.cuatok@ga.com","tier":"T1","play":"","focus":0,"desc":""},{"id":"006QO00000no62n","rep":"G Squared Technologies","opco":"REN","assoc":"Brent Corsetto","owner":"Brian Reardon","acct":"Northrop Grumman - Baltimore, MD","acctType":"Customer","parent":"Northrop Grumman HQ - Falls Church, VA","acctOwner":"Bill Riddle","name":"AEMQ-0002354","btype":"Repeat Business","ptype":"Existing Program","stage":"6 Booked - WON","amt":148859.36,"created":"4/9/2026","close":"5/1/2026","age":22.0,"stageDur":200.0,"createdBy":"Brian Reardon","lead":"None","won":1,"lastAct":"4/27/2026","fcst":"Closed","hasProd":1,"push":1,"role":"Inside Sales","title":"National Sales Manager","industry":"Aerospace & Defense","city":"Baltimore","state":"Maryland","country":"United States","contact":"Caitlin Jaeger","ctitle":"Principal Subcontracts Specialist","cemail":"caitlin.jaeger@ngc.com","tier":"T1","play":"Core","focus":1,"desc":""},{"id":"006QO00000qqPR0","rep":"RF Associates","opco":"REN","assoc":"Kevin Taylor","owner":"Brian Reardon","acct":"Analog Devices - Chelmsford, MA","acctType":"Customer","parent":"Analog Devices HQ - Wilmington, MA","acctOwner":"Jack Smith","name":"AEMQ-0002785","btype":"Expansion (Existing Customer/Cross Sell)","ptype":"Existing Program","stage":"6 Booked - WON","amt":420.0,"created":"5/13/2026","close":"5/29/2026","age":16.0,"stageDur":172.0,"createdBy":"Brian Reardon","lead":"Referral - Rep","won":1,"lastAct":"","fcst":"Closed","hasProd":1,"push":0,"role":"Inside Sales","title":"National Sales Manager","industry":"Consumer","city":"Chelmsford","state":"Massachusetts","country":"United States","contact":"Diane Dumont","ctitle":"Senior Analyst, Supply Chain Planning","cemail":"diane.dumont@analog.com","tier":"T2","play":"Core","focus":0,"desc":""},{"id":"006QO00000nuhEM","rep":"G Squared Technologies","opco":"REN","assoc":"Crissy Hanes","owner":"Brian Reardon","acct":"Superior Communications, Inc.","acctType":"Customer","parent":"","acctOwner":"Michaela Pounds","name":"AEMQ-0002379 - Rev 3","btype":"New Customer (New Logo or Site Only)","ptype":"New Program","stage":"6 Booked - WON","amt":2056600.34,"created":"4/10/2026","close":"7/13/2026","age":94.0,"stageDur":127.0,"createdBy":"Brian Reardon","lead":"Other: Specify","won":1,"lastAct":"5/18/2026","fcst":"Closed","hasProd":1,"push":2,"role":"Inside Sales","title":"National Sales Manager","industry":"Aerospace & Defense","city":"Rockville","state":"Maryland","country":"United States","contact":"Jorge Petrovic","ctitle":"Federal Sales Manager","cemail":"jorgepetrovic@scicommo.com","tier":"T3","play":"","focus":1,"desc":""},{"id":"006QO000010N5Cz","rep":"e-Components","opco":"REN","assoc":"Ray King","owner":"Bill Riddle","acct":"Dynetics - Huntsville, AL","acctType":"Customer","parent":"","acctOwner":"Bill Riddle","name":"Leidos Dynetics Huntsville - IRAD - Circulator -AEMQ-0005776","btype":"Expansion (Existing Customer/Cross Sell)","ptype":"New Program","stage":"6 Booked - WON","amt":2800.0,"created":"8/25/2026","close":"9/3/2026","age":9.0,"stageDur":75.0,"createdBy":"Bill Riddle","lead":"Self Prospecting","won":1,"lastAct":"8/28/2026","fcst":"Closed","hasProd":1,"push":0,"role":"Field Sales","title":"Regional Sales Manager","industry":"Aerospace & Defense","city":"Huntsville","state":"Alabama","country":"United States","contact":"Keri Franklin Tougaw","ctitle":"","cemail":"keri.franklintougaw@leidos.com","tier":"T1","play":"","focus":0,"desc":""},{"id":"006QO00000yD7HG","rep":"e-Components","opco":"AEMI","assoc":"Nick Abrams","owner":"Bill Riddle","acct":"Lockheed Martin - Orlando, FL","acctType":"Customer","parent":"Lockheed Martin HQ - Bethesda, MD","acctOwner":"Bill Riddle","name":"Lockheed Orlando - Pac 3 - BAT54KFILM-AEM","btype":"Expansion (Existing Customer/Cross Sell)","ptype":"Existing Program","stage":"6 Booked - WON","amt":54600.0,"created":"7/30/2026","close":"9/29/2026","age":61.0,"stageDur":49.0,"createdBy":"Bill Riddle","lead":"Self Prospecting","won":1,"lastAct":"","fcst":"Closed","hasProd":1,"push":0,"role":"Field Sales","title":"Regional Sales Manager","industry":"Aerospace & Defense","city":"Orlando","state":"Florida","country":"United States","contact":"","ctitle":"","cemail":"","tier":"T1","play":"Core","focus":1,"desc":""},{"id":"006QO00000pVF2D","rep":"e-Components","opco":"AEMI","assoc":"Ray King","owner":"Bill Riddle","acct":"Boeing - Huntsville, AL","acctType":"Customer","parent":"Boeing HQ - Arlington, VA","acctOwner":"Bill Riddle","name":"Boeing Huntsville - PAC 3- TWM Vishay P.N.  ILHB1812ER121V","btype":"Expansion (Existing Customer/Cross Sell)","ptype":"New Program","stage":"6 Booked - WON","amt":331620.0,"created":"4/28/2026","close":"9/2/2026","age":127.0,"stageDur":76.0,"createdBy":"Bill Riddle","lead":"Self Prospecting","won":1,"lastAct":"6/17/2026","fcst":"Closed","hasProd":1,"push":2,"role":"Field Sales","title":"Regional Sales Manager","industry":"Aerospace & Defense","city":"Huntsville","state":"Alabama","country":"United States","contact":"","ctitle":"","cemail":"","tier":"T1","play":"Core","focus":1,"desc":""},{"id":"006QO00000kHa7p","rep":"ETSI","opco":"AEMI","assoc":"Matt Dickey","owner":"Bill Riddle","acct":"Northrop Grumman - Baltimore, MD","acctType":"Customer","parent":"Northrop Grumman HQ - Falls Church, VA","acctOwner":"Bill Riddle","name":"ETSI - NGC BWI - Cap Up Screen - Montgomery MCM - JDM 2603-24132","btype":"Expansion (Existing Customer/Cross Sell)","ptype":"New Program","stage":"6 Booked - WON","amt":64422.0,"created":"3/4/2026","close":"6/1/2026","age":89.0,"stageDur":169.0,"createdBy":"Bill Riddle","lead":"Referral - Rep","won":1,"lastAct":"","fcst":"Closed","hasProd":1,"push":0,"role":"Field Sales","title":"Regional Sales Manager","industry":"Aerospace & Defense","city":"Baltimore","state":"Maryland","country":"United States","contact":"","ctitle":"","cemail":"","tier":"T1","play":"Core","focus":1,"desc":""},{"id":"006QO00000jLcun","rep":"ECS (Electronic Component Sales)","opco":"REN","assoc":"Brad","owner":"Benjamin Hamerl","acct":"AT&T","acctType":"Customer","parent":"","acctOwner":"Benjamin Hamerl","name":"AT&T-Amplifier-Washington-January 2026 (943802)","btype":"Expansion (Existing Customer/Cross Sell)","ptype":"Unknown","stage":"6 Booked - WON","amt":21036.76,"created":"2/23/2026","close":"1/27/2026","age":0.0,"stageDur":267.0,"createdBy":"Benjamin Hamerl","lead":"Other: Specify","won":1,"lastAct":"","fcst":"Closed","hasProd":0,"push":0,"role":"Field Sales","title":"Regional Sales Manager","industry":"Industrial","city":"Redmond","state":"Washington","country":"United States","contact":"","ctitle":"","cemail":"","tier":"T1","play":"","focus":0,"desc":""},{"id":"006QO00000vBBIf","rep":"TSC Kruvand Technologies","opco":"AEMI","assoc":"Catherine","owner":"Benjamin Hamerl","acct":"Raytheon RTX - Tucson, AZ","acctType":"Customer","parent":"RTX (Raytheon) HQ","acctOwner":"Benjamin Hamerl","name":"Raytheon - Vishay Inductor TWM - Tucson - July 2026","btype":"Expansion (Existing Customer/Cross Sell)","ptype":"Unknown","stage":"6 Booked - WON","amt":6188.0,"created":"6/24/2026","close":"8/14/2026","age":51.0,"stageDur":95.0,"createdBy":"Benjamin Hamerl","lead":"Referral - Rep","won":1,"lastAct":"","fcst":"Closed","hasProd":0,"push":1,"role":"Field Sales","title":"Regional Sales Manager","industry":"Aerospace & Defense","city":"Tucson","state":"Arizona","country":"United States","contact":"","ctitle":"","cemail":"","tier":"T1","play":"Core","focus":1,"desc":""},{"id":"006QO00000iQ82D","rep":"Milexia Deutschland GmbH","opco":"REN","assoc":"","owner":"Marin Ajduk","acct":"Milexia Deutschland GmbH","acctType":"Sales Partner","parent":"","acctOwner":"Marin Ajduk","name":"STT-SystemTechnik Isolator ESA 2H3NDCL","btype":"New Customer (New Logo or Site Only)","ptype":"New Program","stage":"4 Quoted","amt":10000.0,"created":"2/12/2026","close":"12/31/2026","age":278.0,"stageDur":110.0,"createdBy":"Marin Ajduk","lead":"Referral - Rep","won":0,"lastAct":"10/7/2026","fcst":"Pipeline","hasProd":0,"push":5,"role":"Field Sales","title":"Director of Sales EMEA","industry":"Aerospace & Defense","city":"Norderstedt","state":"","country":"Germany","contact":"Lukas Lischke","ctitle":"","cemail":"lukas.lischke@milexia.com","tier":"","play":"","focus":0,"desc":""},{"id":"006QO000010Pv0z","rep":"STG Group","opco":"REN","assoc":"","owner":"Marin Ajduk","acct":"IAI Group Israel","acctType":"Customer","parent":"","acctOwner":"Marin Ajduk","name":"Mabat Space-qualified X-Band Cavity Filter","btype":"Expansion (Existing Customer/Cross Sell)","ptype":"New Program","stage":"3 Proposal","amt":50000.0,"created":"8/26/2026","close":"12/15/2026","age":83.0,"stageDur":19.0,"createdBy":"Marin Ajduk","lead":"Referral - Rep","won":0,"lastAct":"10/30/2026","fcst":"Pipeline","hasProd":0,"push":1,"role":"Field Sales","title":"Director of Sales EMEA","industry":"Aerospace & Defense","city":"Tel Aviv","state":"","country":"Israel","contact":"Alex Zaid","ctitle":"RF Group Manager","cemail":"alex@stggroup.co.il","tier":"T1","play":"","focus":1,"desc":""},{"id":"006QO00000TVYZO","rep":"Protec","opco":"AEMI","assoc":"","owner":"Marin Ajduk","acct":"TESAT","acctType":"Customer","parent":"","acctOwner":"Marin Ajduk","name":"HRB for Jena Optronik","btype":"Expansion (Existing Customer/Cross Sell)","ptype":"New Program","stage":"6 Booked - WON","amt":20000.0,"created":"7/31/2025","close":"1/30/2026","age":183.0,"stageDur":278.0,"createdBy":"Marin Ajduk","lead":"Referral - Rep","won":1,"lastAct":"","fcst":"Closed","hasProd":0,"push":1,"role":"Field Sales","title":"Director of Sales EMEA","industry":"Aerospace & Defense","city":"Backnang","state":"","country":"Germany","contact":"","ctitle":"","cemail":"","tier":"T1","play":"","focus":1,"desc":""},{"id":"006QO000010enzC","rep":"e-Components","opco":"REN","assoc":"Nick Abrams","owner":"Bill Riddle","acct":"L3Harris - Palm Bay, FL","acctType":"Customer","parent":"L3Harris HQ - Melbourne, FL","acctOwner":"Bill Riddle","name":"L3 Harris Melbourne - AMDT3 TR3TRK - Isolators - AEMQ-0005838","btype":"Expansion (Existing Customer/Cross Sell)","ptype":"New Program","stage":"6 Booked - WON","amt":177085.0,"created":"8/28/2026","close":"9/22/2026","age":25.0,"stageDur":56.0,"createdBy":"Michaela Pounds","lead":"None","won":1,"lastAct":"","fcst":"Closed","hasProd":1,"push":1,"role":"Field Sales","title":"Regional Sales Manager","industry":"Aerospace & Defense","city":"Palm Bay","state":"Florida","country":"United States","contact":"Katie Donovan","ctitle":"Senior Specialist, Procurement","cemail":"katie.monaco@l3harris.com","tier":"T1","play":"Core","focus":1,"desc":""},{"id":"006QO00000gqnFl","rep":"Sertech","opco":"REN","assoc":"Jim Mcauliff","owner":"Michaela Pounds","acct":"Honeywell Aerospace - Lancaster, PA","acctType":"Customer","parent":"Honeywell Aerospace HQ - Phoenix, AZ","acctOwner":"Bill Riddle","name":"943820","btype":"Repeat Business","ptype":"Existing Program","stage":"6 Booked - WON","amt":23454.31,"created":"1/27/2026","close":"2/5/2026","age":9.0,"stageDur":285.0,"createdBy":"Michaela Pounds","lead":"None","won":1,"lastAct":"2/2/2026","fcst":"Closed","hasProd":1,"push":0,"role":"Inside Sales","title":"Inside Sales Specialist","industry":"Aerospace & Defense","city":"Lancaster","state":"Pennsylvania","country":"United States","contact":"","ctitle":"","cemail":"","tier":"T1","play":"Core","focus":0,"desc":""},{"id":"006QO00000mqoxx","rep":"Sertech","opco":"REN","assoc":"Jim Mcauliff","owner":"Michaela Pounds","acct":"CPI Satcom and Antenna Technologies","acctType":"Customer","parent":"","acctOwner":"Jack Smith","name":"AEMQ-0002193","btype":"Repeat Business","ptype":"Existing Program","stage":"6 Booked - WON","amt":19167.5,"created":"3/31/2026","close":"4/16/2026","age":16.0,"stageDur":215.0,"createdBy":"Michaela Pounds","lead":"None","won":1,"lastAct":"4/14/2026","fcst":"Closed","hasProd":1,"push":0,"role":"Inside Sales","title":"Inside Sales Specialist","industry":"Aerospace & Defense","city":"State College","state":"Pennsylvania","country":"United States","contact":"Randy Hosterman","ctitle":"3 Senior Supply Chain Specialist","cemail":"randy.hosterman@cpii.com","tier":"T2","play":"","focus":0,"desc":""},{"id":"006QO00000mTnHq","rep":"Sertech","opco":"REN","assoc":"Joe DiDomenico","owner":"Michaela Pounds","acct":"Frontgrade Technologies - Plainview, NY","acctType":"Customer","parent":"Frontgrade Technologies HQ - Colorado Springs, CO","acctOwner":"Jack Smith","name":"AEMQ-0002130 REV. A","btype":"Repeat Business","ptype":"Existing Program","stage":"6 Booked - WON","amt":32349.6,"created":"3/27/2026","close":"4/24/2026","age":28.0,"stageDur":207.0,"createdBy":"Michaela Pounds","lead":"None","won":1,"lastAct":"4/23/2026","fcst":"Closed","hasProd":1,"push":0,"role":"Inside Sales","title":"Inside Sales Specialist","industry":"Aerospace & Defense","city":"Plainview","state":"New York","country":"United States","contact":"Dorothy Scudera","ctitle":"Buyer IV","cemail":"dorothy.scudera@frontgrade.com","tier":"T2","play":"Core","focus":0,"desc":""},{"id":"006QO00000iLHB1","rep":"Sertech","opco":"REN","assoc":"Caroline Mcmahon","owner":"Michaela Pounds","acct":"CPI Satcom and Antenna Technologies","acctType":"Customer","parent":"","acctOwner":"Jack Smith","name":"943843","btype":"Repeat Business","ptype":"Existing Program","stage":"6 Booked - WON","amt":4563.25,"created":"2/11/2026","close":"2/12/2026","age":1.0,"stageDur":278.0,"createdBy":"Michaela Pounds","lead":"None","won":1,"lastAct":"2/12/2026","fcst":"Closed","hasProd":1,"push":0,"role":"Inside Sales","title":"Inside Sales Specialist","industry":"Aerospace & Defense","city":"State College","state":"Pennsylvania","country":"United States","contact":"","ctitle":"","cemail":"","tier":"T2","play":"","focus":0,"desc":""},{"id":"006QO00000mTnoA","rep":"Pillar Marketing Group","opco":"REN","assoc":"Troy Kunau","owner":"Michaela Pounds","acct":"Frontgrade Technologies - Plainview, NY","acctType":"Customer","parent":"Frontgrade Technologies HQ - Colorado Springs, CO","acctOwner":"Jack Smith","name":"AEMQ-0002132 REV. A","btype":"Repeat Business","ptype":"Existing Program","stage":"6 Booked - WON","amt":31083.36,"created":"3/27/2026","close":"4/24/2026","age":28.0,"stageDur":207.0,"createdBy":"Michaela Pounds","lead":"None","won":1,"lastAct":"4/23/2026","fcst":"Closed","hasProd":1,"push":0,"role":"Inside Sales","title":"Inside Sales Specialist","industry":"Aerospace & Defense","city":"Plainview","state":"New York","country":"United States","contact":"Dorothy Scudera","ctitle":"Buyer IV","cemail":"dorothy.scudera@frontgrade.com","tier":"T2","play":"Core","focus":0,"desc":""},{"id":"006QO000015o1vB","rep":"Pillar Marketing Group","opco":"REN","assoc":"Troy Kunau","owner":"Brian Reardon","acct":"Lockheed Martin - Littleton, CO","acctType":"Customer","parent":"Lockheed Martin HQ - Bethesda, MD","acctOwner":"Benjamin Hamerl","name":"AEMQ-0007029","btype":"Repeat Business","ptype":"Existing Program","stage":"4 Quoted","amt":4276.0,"created":"10/23/2026","close":"11/30/2026","age":25.0,"stageDur":20.0,"createdBy":"Brian Reardon","lead":"None","won":0,"lastAct":"10/28/2026","fcst":"Pipeline","hasProd":1,"push":0,"role":"Inside Sales","title":"National Sales Manager","industry":"Aerospace & Defense","city":"Littleton","state":"Colorado","country":"United States","contact":"Taylor J. Erickson","ctitle":"","cemail":"taylor.j.erickson@lmco.com","tier":"T1","play":"Core","focus":1,"desc":""},{"id":"006QO00000np5RF","rep":"RF Associates","opco":"REN","assoc":"Kevin Taylor","owner":"Brian Reardon","acct":"Analog Devices - Chelmsford, MA","acctType":"Customer","parent":"Analog Devices HQ - Wilmington, MA","acctOwner":"Jack Smith","name":"AEMQ-0002361","btype":"Repeat Business","ptype":"Existing Program","stage":"6 Booked - WON","amt":25067.25,"created":"4/9/2026","close":"4/23/2026","age":14.0,"stageDur":208.0,"createdBy":"Brian Reardon","lead":"Referral - Rep","won":1,"lastAct":"","fcst":"Closed","hasProd":1,"push":1,"role":"Inside Sales","title":"National Sales Manager","industry":"Consumer","city":"Chelmsford","state":"Massachusetts","country":"United States","contact":"Diane Dumont","ctitle":"Senior Analyst, Supply Chain Planning","cemail":"diane.dumont@analog.com","tier":"T2","play":"Core","focus":0,"desc":""}];
+const ASOF = new Date(Date.UTC(2026,10,17));
+const MONTHS=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const PROB={"2 Solutioning":.2,"3 Proposal":.35,"4 Quoted":.5,"5 Commit":.8,"6 Booked - WON":1};
+const pd=s=>{if(!s)return null;const[m,d,y]=s.split("/").map(Number);return new Date(Date.UTC(y,m-1,d));};
+const days=(a,b)=>Math.round((a-b)/864e5);
+const ym=d=>d?`${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,"0")}`:"";
+const qtr=d=>d?`Q${Math.floor(d.getUTCMonth()/3)+1}-${d.getUTCFullYear()}`:"";
+const amtBand=a=>a<10000?"< $10K":a<50000?"$10K–50K":a<250000?"$50K–250K":a<1e6?"$250K–1M":"≥ $1M";
+const BANDS=["≥ $1M","$250K–1M","$50K–250K","$10K–50K","< $10K"];
+
+// ---------- rep roster (current agreements, Nov 2026) ----------
+const ALL_OPCOS=["AEMC","AEMI","CEN","REN"];
+const ROSTER=[
+ {rep:"Cain-Forlaw CO.",terr:"Michigan",rosterRegion:"USA",region:"Americas",newc:true,opcos:["AEMC","AEMI"],proc:"Yes",upload:"No",states:["MI"]},
+ {rep:"Comcraft - AEM Holdings, Inc.",terr:"Japan",rosterRegion:"Japan",region:"APAC",newc:false,opcos:["AEMI"],proc:"No",upload:"",countries:["Japan"]},
+ {rep:"Comcraft",terr:"Japan",rosterRegion:"Japan",region:"APAC",newc:false,opcos:["REN"],proc:"No",upload:"",countries:["Japan"]},
+ {rep:"Connekt",terr:"India",rosterRegion:"India",region:"APAC",newc:true,opcos:ALL_OPCOS,proc:"Yes",upload:"Yes",countries:["India"]},
+ {rep:"E-Components",terr:"AL, GA, MS, NC, SC, TN, FL and Puerto Rico",rosterRegion:"USA",region:"Americas",newc:true,opcos:["AEMI","CEN","REN"],proc:"Yes",upload:"Yes",states:["AL","GA","MS","NC","SC","TN","FL","PR"]},
+ {rep:"Electronic Component Sales (ECS)",terr:"ID, WA, OR and British Columbia",rosterRegion:"USA",region:"Americas",newc:true,opcos:ALL_OPCOS,proc:"Yes",upload:"Yes",states:["ID","WA","OR","BC"]},
+ {rep:"ETSI, LLC",terr:"MD, VA, DC",rosterRegion:"USA",region:"Americas",newc:true,opcos:ALL_OPCOS,proc:"Yes",upload:"Yes",states:["MD","VA","DC"]},
+ {rep:"Hutec",terr:"South Korea",rosterRegion:"S Korea",region:"APAC",newc:false,opcos:["AEMI"],proc:"No",upload:"",countries:["South Korea"]},
+ {rep:"Kolt",terr:"Turkey",rosterRegion:"Turkey",region:"EMEA",newc:false,opcos:["AEMI"],proc:"No",upload:"",countries:["Turkey"]},
+ {rep:"Mel Foster Company",terr:"IA, KS, MN, MO, NE, ND, SD, Western WI",rosterRegion:"USA",region:"Americas",newc:true,opcos:ALL_OPCOS,proc:"Yes",upload:"Yes",states:["IA","KS","MN","MO","NE","ND","SD","WI"]},
+ {rep:"Microelit",terr:"Italy and Greece",rosterRegion:"Italy and Greece",region:"EMEA",newc:false,opcos:["AEMI"],proc:"No",upload:"",countries:["Italy","Greece"]},
+ {rep:"TSC Kruvand Technologies",terr:"AZ, Southern NV (Clark County), NM",rosterRegion:"USA",region:"Americas",newc:true,opcos:ALL_OPCOS,proc:"Yes",upload:"Yes",states:["AZ","NV","NM"]},
+].map(r=>({...r,status:"Active"}));
+const INACTIVE=[["Pillar Marketing Group","Americas"],["G Squared Technologies","Americas"],["RF Associates","Americas"],["Sertech","Americas"],["QuadRep-Ferrari Technologies Inc","Americas"],["STG Group","EMEA"],["Protec","EMEA"],["Milexia Deutschland GmbH","EMEA"]]
+  .map(([rep,region])=>({rep,region,status:"Inactive",terr:"Terminated (not on current roster)",opcos:[],newc:false,proc:"",upload:""}));
+const REPS=[...ROSTER,...INACTIVE]; const REPMAP=new Map(REPS.map(r=>[r.rep,r]));
+const CANON={"e-Components":"E-Components","ECS (Electronic Component Sales)":"Electronic Component Sales (ECS)","ETSI":"ETSI, LLC"};
+const ST={"Alabama":"AL","Arizona":"AZ","California":"CA","Colorado":"CO","Florida":"FL","Iowa":"IA","Kansas":"KS","Maryland":"MD","Massachusetts":"MA","New Hampshire":"NH","New York":"NY","Pennsylvania":"PA","Texas":"TX","Virginia":"VA","Washington":"WA","Quebec":"QC","British Columbia":"BC","Michigan":"MI"};
+function territoryOwner(country,state){
+  const ab=ST[state]||state;
+  const hit=ROSTER.find(r=>country==="United States"||country==="Canada"?(r.states||[]).includes(ab):(r.countries||[]).includes(country));
+  return hit?hit.rep:"No active rep";
+}
+const IN_SCOPE=r=>r.region==="Americas"||r.region==="EMEA";
+
+// ---------- enrich rows ----------
+const nameCount={};RAW.forEach(r=>{if(r.won){const k=r.name+"|"+r.acct;nameCount[k]=(nameCount[k]||0)+1;}});
+const DATA=RAW.map(r0=>{
+  const rep=CANON[r0.rep]||r0.rep; const rr=REPMAP.get(rep);
+  const r={...r0,rep,lead:(r0.lead==='None'?'':r0.lead)};
+  const c=pd(r.created),cl=pd(r.close),la=pd(r.lastAct);
+  const region=rr.region, status=rr.status;
+  const newBiz=/^New Customer|^Expansion/.test(r.btype);
+  const comm=region==="EMEA"?true:newBiz;
+  const actDays=la?days(ASOF,la):null;
+  const terrRep=territoryOwner(r.country,r.state);
+  return {...r,c,cl,la,region,status,newBiz,comm,open:!r.won,terrRep,
+    inTerr:status==="Active"?(terrRep===rep?"In territory":"Outside territory"):"Rep terminated",
+    opcoOk:status==="Active"?rr.opcos.includes(r.opco):true,
+    cYM:ym(c),clYM:ym(cl),cQ:qtr(c),clQ:qtr(cl),
+    w:r.amt*(PROB[r.stage]??0),band:amtBand(r.amt),
+    actDays,actBucket:la==null?"No activity logged":actDays<0?"Future-dated":actDays<=30?"≤ 30 days":actDays<=90?"31–90 days":"> 90 days",
+    pushB:r.push===0?"0":r.push<=2?"1–2":"3+",
+    cycle:(c&&cl)?days(cl,c):null,
+    newLogo:/^New Customer/.test(r.btype), newProg:r.ptype==="New Program",
+    dupWon:r.won&&nameCount[r0.name+"|"+r.acct]>1,
+    assocN:r.assoc||"(none named)", leadN:r.lead||"(blank)", tierN:r.tier||"(blank)", playN:r.play||"(blank)", parentN:r.parent||"(none)", roleN:r.role||"(blank)"};
+});
+
+// ---------- formatting ----------
+const $f=v=>{if(v==null||isNaN(v))return"—";const a=Math.abs(v);return (v<0?"-":"")+"$"+(a>=1e6?(a/1e6).toFixed(2)+"M":a>=1e4?(a/1e3).toFixed(0)+"K":a>=1e3?(a/1e3).toFixed(1)+"K":a.toFixed(0));};
+const $full=v=>v==null?"—":"$"+Math.round(v).toLocaleString("en-US");
+const nf=v=>v==null||isNaN(v)?"—":Number(v).toLocaleString("en-US",{maximumFractionDigits:1});
+const pf=v=>v==null||isNaN(v)?"—":(v*100).toFixed(v<0.1&&v>0?1:0)+"%";
+const df=v=>v==null||isNaN(v)?"—":Math.round(v)+" d";
+const xf=v=>v==null||isNaN(v)||!isFinite(v)?"—":v.toFixed(2)+"×";
+const FMT={$:$f,n:nf,"%":pf,d:df,x:xf};
+const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+// ---------- aggregates ----------
+const sum=(a,f="amt")=>a.reduce((s,r)=>s+(typeof f==="function"?f(r):r[f]||0),0);
+const avg=(a,f="amt")=>a.length?sum(a,f)/a.length:null;
+const med=(a,f="amt")=>{const v=a.map(r=>typeof f==="function"?f(r):r[f]).filter(x=>x!=null).sort((x,y)=>x-y);if(!v.length)return null;const m=v.length>>1;return v.length%2?v[m]:(v[m-1]+v[m])/2;};
+const mx=(a,f="amt")=>a.length?Math.max(...a.map(r=>r[f]||0)):null;
+const dist=(a,f)=>new Set(a.map(r=>r[f]).filter(Boolean)).size;
+const groupBy=(a,f)=>{const m=new Map();a.forEach(r=>{const k=typeof f==="function"?f(r):r[f];if(!m.has(k))m.set(k,[]);m.get(k).push(r);});return m;};
+
+// ---------- filters ----------
+const FILTERS=[
+ {k:"status",label:"Rep status (parent)",order:["Active","Inactive"],rep:true},
+ {k:"rep",label:"Rep (firm)",rep:true},
+ {k:"opco",label:"OpCo"},
+ {k:"acct",label:"Account"},
+ {k:"cYM",label:"Created date (FY › Qtr › Month)",tree:"c"},
+ {k:"clYM",label:"Close date (FY › Qtr › Month)",tree:"cl"},
+ {k:"btype",label:"Business type"},
+ {k:"band",label:"Amount band",order:BANDS},
+ {k:"stage",label:"Stage"},
+ {k:"region",label:"Region",order:["Americas","EMEA","APAC"],rep:true},
+ {k:"terrRep",label:"Territory owner (active rep)"},
+ {k:"inTerr",label:"Territory fit",order:["In territory","Outside territory","Rep terminated"]},
+ {k:"commL",label:"Commission eligible",get:r=>r.comm?"Commissionable":"Not commissionable"},
+ {k:"assocN",label:"Rep associate"},
+ {k:"owner",label:"Opportunity owner"},
+ {k:"roleN",label:"Owner role"},
+ {k:"leadN",label:"Lead source"},
+ {k:"ptype",label:"Program type"},
+ {k:"fcst",label:"Forecast category"},
+ {k:"tierN",label:"Account tier"},
+ {k:"playN",label:"Account play"},
+ {k:"focusL",label:"Focus account",get:r=>r.focus?"Focus":"Not focus"},
+ {k:"parentN",label:"Parent account"},
+ {k:"country",label:"Billing country"},
+ {k:"actBucket",label:"Last activity",order:["≤ 30 days","31–90 days","> 90 days","No activity logged","Future-dated"]},
+ {k:"pushB",label:"Push count",order:["0","1–2","3+"]},
+ {k:"wonL",label:"Open vs won",get:r=>r.won?"Won":"Open"},
+];
+const val=(f,r)=>f.get?f.get(r):r[f.k];
+const SEL={}; FILTERS.forEach(f=>SEL[f.k]=new Set());
+let SORT="desc"; let MOTION="all";
+const passes=(r,skip)=>FILTERS.every(f=>f.k===skip||!SEL[f.k].size||SEL[f.k].has(val(f,r)));
+const filtered=()=>{const a=DATA.filter(r=>passes(r));a.sort((x,y)=>SORT==="desc"?y.amt-x.amt:x.amt-y.amt);return a;};
+
+function buildFilters(){
+  const host=document.getElementById("filters");host.innerHTML="";
+  // amount sort control comes right after Business type per requested order
+  FILTERS.forEach((f,i)=>{
+    const w=document.createElement("div");w.className="f";
+    const id="f_"+f.k;
+    w.innerHTML=`<label for="${id}">${esc(f.label)}</label><button class="fbtn" id="${id}" type="button" aria-haspopup="true" aria-expanded="false"></button><div class="fpanel" role="group" aria-label="${esc(f.label)}"></div>`;
+    host.appendChild(w);
+    const btn=w.querySelector(".fbtn"),pan=w.querySelector(".fpanel");
+    btn.onclick=e=>{e.stopPropagation();const open=!pan.classList.contains("open");closePanels();if(open){renderPanel(f,pan);pan.classList.add("open");btn.setAttribute("aria-expanded","true");}};
+    pan.onclick=e=>e.stopPropagation();
+    if(f.k==="btype"){
+      const s=document.createElement("div");s.className="f";
+      s.innerHTML=`<label for="f_sort">Amount order</label><select class="plain" id="f_sort"><option value="desc">Amount: high → low</option><option value="asc">Amount: low → high</option></select>`;
+      host.appendChild(s);
+      s.querySelector("select").onchange=e=>{SORT=e.target.value;render();};
+    }
+  });
+  updateBtns();
+}
+function closePanels(){document.querySelectorAll(".fpanel.open").forEach(p=>{p.classList.remove("open");p.previousElementSibling.setAttribute("aria-expanded","false");});}
+document.addEventListener("click",closePanels);
+document.addEventListener("keydown",e=>{if(e.key==="Escape"){closePanels();closeModal();}});
+
+function optionCounts(f){
+  const m=new Map();DATA.filter(r=>passes(r,f.k)).forEach(r=>{const v=val(f,r);m.set(v,(m.get(v)||0)+1);});
+  DATA.forEach(r=>{const v=val(f,r);if(!m.has(v))m.set(v,0);});
+  if(f.k==="rep")REPS.forEach(r=>{if(!m.has(r.rep))m.set(r.rep,0);});
+  if(f.k==="region")["Americas","EMEA","APAC"].forEach(k=>{if(!m.has(k))m.set(k,0);});
+  if(f.k==="status")["Active","Inactive"].forEach(k=>{if(!m.has(k))m.set(k,0);});
+  let keys=[...m.keys()].filter(k=>k!==""&&k!=null);
+  if(f.order)keys.sort((a,b)=>f.order.indexOf(a)-f.order.indexOf(b));
+  else if(f.k==="stage")keys.sort();
+  else if(f.k==="rep")keys.sort((a,b)=>((REPMAP.get(a)?.status==="Active"?0:1)-(REPMAP.get(b)?.status==="Active"?0:1))||(m.get(b)-m.get(a))||a.localeCompare(b));
+  else keys.sort((a,b)=>(m.get(b)-m.get(a))||String(a).localeCompare(b));
+  return {keys,m};
+}
+function renderPanel(f,pan){
+  if(f.tree)return renderTree(f,pan);
+  const {keys,m}=optionCounts(f);
+  pan.innerHTML=`<input type="search" placeholder="Search ${esc(f.label.toLowerCase())}" aria-label="Search options"><div class="fopts"></div><div class="fact"><button class="lnk" data-a="all" type="button">Select shown</button><button class="lnk" data-a="none" type="button">Clear</button></div>`;
+  const list=pan.querySelector(".fopts"),q=pan.querySelector("input");
+  const draw=()=>{const t=q.value.toLowerCase();list.innerHTML=keys.filter(k=>String(k).toLowerCase().includes(t)).map((k,i)=>`<label class="fopt"><input type="checkbox" data-v="${esc(k)}" ${SEL[f.k].has(k)?"checked":""}> <span>${esc(k)}${f.k==="rep"&&REPMAP.get(k)?` <span class="muted" style="font-size:11px">· ${REPMAP.get(k).status==="Active"?"Active · "+REPMAP.get(k).region:"Inactive"}</span>`:""}</span><span class="cnt">${m.get(k)}</span></label>`).join("")||`<div class="muted" style="padding:6px">No matches</div>`;};
+  draw();q.oninput=draw;
+  list.onchange=e=>{const v=e.target.dataset.v;const k=keys.find(x=>String(x)===v);e.target.checked?SEL[f.k].add(k):SEL[f.k].delete(k);render(false);};
+  pan.querySelector('[data-a="all"]').onclick=()=>{const t=q.value.toLowerCase();keys.filter(k=>String(k).toLowerCase().includes(t)).forEach(k=>SEL[f.k].add(k));draw();render(false);};
+  pan.querySelector('[data-a="none"]').onclick=()=>{SEL[f.k].clear();draw();render(false);};
+  setTimeout(()=>q.focus(),0);
+}
+const TREE_OPEN={};
+function renderTree(f,pan){
+  const dk=f.tree; // 'c' or 'cl'
+  const months=[...new Set(DATA.map(r=>r[dk+"YM"]).filter(Boolean))].sort();
+  const cnt=new Map();DATA.filter(r=>passes(r,f.k)).forEach(r=>cnt.set(r[dk+"YM"],(cnt.get(r[dk+"YM"])||0)+1));
+  const years=[...new Set(months.map(m=>m.slice(0,4)))];
+  const qOf=m=>"Q"+(Math.floor((+m.slice(5)-1)/3)+1);
+  const S=SEL[f.k];
+  const state=list=>{const n=list.filter(m=>S.has(m)).length;return n===0?0:n===list.length?2:1;};
+  let h=`<div class="fopts tree">`;
+  years.forEach(y=>{
+    const ym_=months.filter(m=>m.startsWith(y));const st=state(ym_);const ky=dk+y;
+    h+=`<div class="fopt"><button class="tog" data-t="${ky}" type="button" aria-label="Expand ${y}">${TREE_OPEN[ky]===false?"▸":"▾"}</button><input type="checkbox" data-g="${ym_.join(",")}" ${st===2?"checked":""} ${st===1?'data-ind="1"':""}> <b>FY ${y}</b><span class="cnt">${ym_.reduce((s,m)=>s+(cnt.get(m)||0),0)}</span></div>`;
+    if(TREE_OPEN[ky]===false)return;
+    [...new Set(ym_.map(qOf))].forEach(q=>{
+      const qm=ym_.filter(m=>qOf(m)===q);const sq=state(qm);const kq=dk+y+q;
+      h+=`<div class="fopt lvl1"><button class="tog" data-t="${kq}" type="button" aria-label="Expand ${q}">${TREE_OPEN[kq]===false?"▸":"▾"}</button><input type="checkbox" data-g="${qm.join(",")}" ${sq===2?"checked":""} ${sq===1?'data-ind="1"':""}> ${q}-${y}<span class="cnt">${qm.reduce((s,m)=>s+(cnt.get(m)||0),0)}</span></div>`;
+      if(TREE_OPEN[kq]===false)return;
+      qm.forEach(m=>{h+=`<label class="fopt lvl2"><input type="checkbox" data-g="${m}" ${S.has(m)?"checked":""}> ${MONTHS[+m.slice(5)-1]} ${y}<span class="cnt">${cnt.get(m)||0}</span></label>`;});
+    });
+  });
+  h+=`</div><div class="fact"><button class="lnk" data-a="none" type="button">Clear</button></div>`;
+  pan.innerHTML=h;
+  pan.querySelectorAll("input[data-ind]").forEach(i=>i.indeterminate=true);
+  pan.querySelectorAll(".tog").forEach(b=>b.onclick=()=>{TREE_OPEN[b.dataset.t]=TREE_OPEN[b.dataset.t]===false?true:false;renderTree(f,pan);});
+  pan.querySelectorAll("input[data-g]").forEach(i=>i.onchange=()=>{const g=i.dataset.g.split(",");const all=g.every(m=>S.has(m));g.forEach(m=>all?S.delete(m):S.add(m));renderTree(f,pan);render(false);});
+  pan.querySelector('[data-a="none"]').onclick=()=>{S.clear();renderTree(f,pan);render(false);};
+}
+function updateSeg(){
+  const s=SEL.status;const cur=s.size===1?[...s][0]:"All";
+  const host=document.getElementById("statusSeg");
+  host.innerHTML=["All","Active","Inactive"].map(v=>`<button type="button" aria-pressed="${cur===v}" data-v="${v}">${v}${v!=="All"?` <span style="opacity:.75;font-weight:500">(${REPS.filter(r=>r.status===v).length})</span>`:""}</button>`).join("");
+  host.querySelectorAll("button").forEach(b=>b.onclick=()=>{SEL.status=b.dataset.v==="All"?new Set():new Set([b.dataset.v]);render();});
+}
+function updateBtns(){
+  updateSeg();
+  FILTERS.forEach(f=>{const b=document.getElementById("f_"+f.k);if(!b)return;const s=SEL[f.k];
+    let txt="All";if(s.size===1){const v=[...s][0];txt=f.tree?(MONTHS[+v.slice(5)-1]+" "+v.slice(0,4)):v;}else if(s.size>1)txt=s.size+" selected";
+    b.textContent=txt;b.classList.toggle("on",s.size>0);b.title=s.size?[...s].join(", "):"All";});
+  const chips=document.getElementById("chips");
+  const parts=[];FILTERS.forEach(f=>SEL[f.k].forEach(v=>parts.push([f,v])));
+  chips.innerHTML=parts.length?parts.map(([f,v],i)=>`<span class="chip">${esc(f.label.split(" (")[0])}: ${esc(f.tree?(MONTHS[+v.slice(5)-1]+" "+v.slice(0,4)):v)} <button type="button" data-i="${i}" aria-label="Remove filter">×</button></span>`).join(""):`<span class="muted" style="font-size:12.5px">No filters applied — showing all 2026 rep-involved opportunities.</span>`;
+  chips.querySelectorAll("button").forEach(b=>b.onclick=()=>{const [f,v]=parts[+b.dataset.i];SEL[f.k].delete(v);render();});
+}
+document.getElementById("resetAll").onclick=()=>{FILTERS.forEach(f=>SEL[f.k].clear());SORT="desc";document.getElementById("f_sort").value="desc";MOTION="all";render();};
+function setFilter(k,v){SEL[k]=new Set([v]);closeModal();render();window.scrollTo({top:0,behavior:"smooth"});}
+
+// ---------- rep scoring ----------
+const W={comm:30,won:15,pipe:20,newwork:15,accts:10,hyg:10};window.W_LIVE=W;const W0={...W};
+let RATE=5;
+// performance retain rule (full 2026): clear >=2 of: commissionable won >= $100K, open >= $100K, >= 5 opps
+const PERF_KEEP=new Set(REPS.filter(r=>r.status==="Active"&&IN_SCOPE(r)).filter(info=>{const a=DATA.filter(x=>x.rep===info.rep);const comm=sum(a.filter(x=>x.won&&x.comm)),pipe=sum(a.filter(x=>x.open));return [comm>=100000,pipe>=100000,a.length>=5].filter(Boolean).length>=2;}).map(r=>r.rep));
+const repLevel=["status","rep","region"];
+function universe(){return REPS.filter(r=>repLevel.every(k=>!SEL[k].size||SEL[k].has(r[k])));}
+function scoreReps(R,U,Wt){
+  const W=Wt||window.W_LIVE;const g=groupBy(R,"rep");const rows=[];
+  (U||universe()).forEach(info=>{const a=g.get(info.rep)||[];const won=a.filter(r=>r.won),open=a.filter(r=>r.open);
+    const act30=a.length?a.filter(r=>r.actDays!=null&&r.actDays>=0&&r.actDays<=30).length/a.length:0;
+    const push=a.length?avg(a,"push"):0;
+    rows.push({...info,info,opps:a.length,won:sum(won),comm:sum(won.filter(r=>r.comm)),pipe:sum(open),wpipe:sum(open,"w"),
+      newwork:a.filter(r=>r.newLogo).length+a.filter(r=>r.newProg).length,accts:dist(a,"acct"),act30,push,
+      hyg:a.length?(0.5*act30+0.5*(1-Math.min(push/3,1)))*Math.min(a.length/3,1):0,rows:a,wonN:won.length,openN:open.length});});
+  const mxOf=k=>Math.max(...rows.map(r=>r[k]),0)||1;
+  const M={comm:mxOf("comm"),won:mxOf("won"),pipe:mxOf("wpipe"),newwork:mxOf("newwork"),accts:mxOf("accts")};
+  const tw=Object.values(W).reduce((s,v)=>s+v,0)||1;
+  rows.forEach(r=>{r.score=r.opps?100*(W.comm*Math.sqrt(r.comm/M.comm)+W.won*Math.sqrt(r.won/M.won)+W.pipe*Math.sqrt(r.wpipe/M.pipe)+W.newwork*Math.sqrt(r.newwork/M.newwork)+W.accts*Math.sqrt(r.accts/M.accts)+W.hyg*r.hyg)/tw:0;});
+  const grp=r=>r.status==="Inactive"?2:IN_SCOPE(r)?0:1;
+  rows.sort((a,b)=>grp(a)-grp(b)||b.score-a.score||a.rep.localeCompare(b.rep));
+  let ar=0;
+  rows.forEach((r,i)=>{r.rank=i+1;r.activeRank=null;r.keep=false;
+    if(r.status==="Active"&&IN_SCOPE(r)){ar++;r.activeRank=ar;r.keep=PERF_KEEP.has(r.rep);r.call=r.keep?"keep":"cut";}
+    else r.call=r.status==="Inactive"?"termed":"oos";});
+  return rows;
+}
+function context(R){
+  const reps=scoreReps(R);const keep=new Set(reps.filter(r=>r.keep).map(r=>r.rep));
+  const byAcct=groupBy(R,"acct");const orphan=[];byAcct.forEach((a,k)=>{if(a.every(r=>r.status!=="Active"))orphan.push(k);});
+  return {reps,keep,orphan,R};
+}
+
+// ---------- measure catalog (100+) ----------
+const SECS=[
+ {k:"demand",tag:"1 · DEMAND GEN",title:"Demand generation",desc:"Where 2026 opportunities came from and who created the demand."},
+ {k:"prospect",tag:"2 · PROSPECTING",title:"Prospecting",desc:"Early-stage and new-logo activity. Placeholder section — prospecting activity data (calls, meetings, sequences) to be added."},
+ {k:"pipeline",tag:"3 · PIPELINE MANAGEMENT",title:"Open opportunity pipeline",desc:"Everything not Closed Won. Health, aging, slippage and hygiene."},
+ {k:"won",tag:"4 · WON BUSINESS",title:"Won business (bookings)",desc:"Closed Won bookings, commissionability and deal quality."},
+ {k:"reps",tag:"REP NETWORK",title:"Rep network, roster & commission",desc:"Active vs terminated reps, territory coverage and performance calls."},
+ {k:"accts",tag:"ACCOUNTS · CONTACTS · ACTIVITY",title:"Accounts, contacts & activity",desc:"Coverage depth, contact capture and data hygiene."},
+];
+const M=[];
+function m(id,sec,label,desc,sel,agg,fmt,opt={}){M.push({id,sec,label,desc,sel,agg,fmt,...opt});}
+const isOpen=r=>r.open, isWon=r=>r.won===1;
+const inLast=(d,n)=>d&&days(ASOF,d)>=0&&days(ASOF,d)<=n;
+const A={count:s=>s.length,sum:s=>sum(s),avg:s=>avg(s),med:s=>med(s),max:s=>mx(s),accts:s=>dist(s,"acct"),reps:s=>dist(s,"rep"),w:s=>sum(s,"w")};
+const share=(num,den)=>(s,R,X)=>{const d=den(R,X);return d?num(s,R,X)/d:null;};
+
+// 1 DEMAND GEN
+m("d1","demand","Opportunities created","All rep-involved opportunities in the filter.",()=>true,A.count,"n");
+m("d2","demand","Pipeline $ created","Total amount of all opportunities created.",()=>true,A.sum,"$");
+m("d3","demand","Avg opportunity size","Average amount per opportunity created.",()=>true,A.avg,"$");
+m("d4","demand","Median opportunity size","Median amount — less distorted by $2M+ deals.",()=>true,A.med,"$");
+m("d5","demand","Rep-referred opportunities","Lead source = Referral - Rep.",r=>r.lead==="Referral - Rep",A.count,"n");
+m("d6","demand","Rep-referred $","Amount where the rep firm sourced the lead.",r=>r.lead==="Referral - Rep",A.sum,"$");
+m("d7","demand","Rep-referred share of $","Rep-sourced $ ÷ all $ created.",r=>r.lead==="Referral - Rep",share(s=>sum(s),R=>sum(R)),"%");
+m("d8","demand","AEM self-prospected opps","Lead source = Self Prospecting (AEM sourced, rep involved).",r=>r.lead==="Self Prospecting",A.count,"n");
+m("d9","demand","AEM self-prospected $","Amount sourced by AEM's own team.",r=>r.lead==="Self Prospecting",A.sum,"$");
+m("d10","demand","Quote-request opps","Inbound quote requests.",r=>r.lead==="Quote Request",A.count,"n");
+m("d11","demand","Referral-other opps","Referral from a non-rep source.",r=>r.lead==="Referral - Other",A.count,"n");
+m("d12","demand","Other / ZoomInfo opps","Other: Specify and ZoomInfo sourced.",r=>/Other: Specify|Zoominfo/.test(r.lead),A.count,"n");
+m("d13","demand","Lead source blank","Opportunities with no lead source — can't credit the rep.",r=>!r.lead,A.count,"n",{flag:true});
+m("d14","demand","Lead source blank %","Share of opportunities with no lead source.",r=>!r.lead,share(s=>s.length,R=>R.length),"%",{flag:true});
+m("d15","demand","New-logo opps created","Business type = New Customer (new logo or site).",r=>r.newLogo,A.count,"n");
+m("d16","demand","New-logo $ created","Amount on new-logo opportunities.",r=>r.newLogo,A.sum,"$");
+m("d17","demand","Expansion opps created","Existing customer cross-sell.",r=>/^Expansion/.test(r.btype),A.count,"n");
+m("d18","demand","Repeat-business opps","Repeat orders on existing parts.",r=>r.btype==="Repeat Business",A.count,"n");
+m("d19","demand","New-program opps","Program type = New Program (design-in).",r=>r.newProg,A.count,"n");
+m("d20","demand","New-program $","Amount tied to new programs.",r=>r.newProg,A.sum,"$");
+m("d21","demand","Rep firms generating demand","Distinct rep firms on at least one opportunity.",()=>true,A.reps,"n");
+m("d22","demand","Opps per rep firm","Opportunities ÷ rep firms.",()=>true,(s)=>s.length/(dist(s,"rep")||1),"n");
+m("d23","demand","Created in last 90 days","Opportunities created since Aug 19, 2026.",r=>inLast(r.c,90),A.count,"n");
+m("d24","demand","$ created in last 90 days","Amount created in the last 90 days.",r=>inLast(r.c,90),A.sum,"$");
+m("d25","demand","Avg opps created / month (2026)","2026 creations ÷ months elapsed (10.5).",r=>r.c&&r.c.getUTCFullYear()===2026,s=>s.length/10.5,"n");
+m("d26","demand","Created in 2025, closing 2026","Carry-in from 2025.",r=>r.c&&r.c.getUTCFullYear()===2025,A.count,"n");
+
+// 2 PROSPECTING
+m("p1","prospect","Solutioning stage opps","Stage 2 — earliest stage in the report.",r=>r.stage==="2 Solutioning",A.count,"n");
+m("p2","prospect","Solutioning $","Amount at Stage 2.",r=>r.stage==="2 Solutioning",A.sum,"$");
+m("p3","prospect","Proposal stage opps","Stage 3.",r=>r.stage==="3 Proposal",A.count,"n");
+m("p4","prospect","Proposal $","Amount at Stage 3.",r=>r.stage==="3 Proposal",A.sum,"$");
+m("p5","prospect","Open new-logo opps","New customers still in pipeline.",r=>r.open&&r.newLogo,A.count,"n");
+m("p6","prospect","Open new-logo $","Amount on open new-logo deals.",r=>r.open&&r.newLogo,A.sum,"$");
+m("p7","prospect","Open new-program opps","Design-ins still open.",r=>r.open&&r.newProg,A.count,"n");
+m("p8","prospect","T1 accounts with open opps","Distinct Tier 1 accounts being worked.",r=>r.open&&r.tier==="T1",A.accts,"n");
+m("p9","prospect","Focus accounts engaged","Distinct focus accounts with any opportunity.",r=>r.focus===1,A.accts,"n");
+m("p10","prospect","Opps with a primary contact","Contact captured on the opportunity.",r=>!!r.contact,A.count,"n");
+m("p11","prospect","Missing primary contact %","Opportunities without a named buyer.",r=>!r.contact,share(s=>s.length,R=>R.length),"%",{flag:true});
+m("p12","prospect","Distinct buyer contacts","Unique primary contacts.",r=>!!r.contact,s=>dist(s,"contact"),"n");
+m("p13","prospect","Prospecting activities","Calls, meetings, sequences — data not in this report yet.",()=>false,()=>null,"n",{pending:true});
+m("p14","prospect","Meetings booked by reps","To be added from Salesloft / activity data.",()=>false,()=>null,"n",{pending:true});
+
+// 3 PIPELINE
+m("o1","pipeline","Open opportunities","Every opportunity not Closed Won.",isOpen,A.count,"n");
+m("o2","pipeline","Open pipeline $","Amount of all open opportunities.",isOpen,A.sum,"$");
+m("o3","pipeline","Weighted pipeline $","Open $ × stage probability (Solutioning 20%, Proposal 35%, Quoted 50%, Commit 80%).",isOpen,A.w,"$");
+m("o4","pipeline","Avg open deal","Open $ ÷ open opportunities.",isOpen,A.avg,"$");
+m("o5","pipeline","Median open deal","Median open amount.",isOpen,A.med,"$");
+m("o6","pipeline","Largest open deal","Biggest single open opportunity.",isOpen,A.max,"$");
+m("o7","pipeline","Commit $","Stage 5 Commit.",r=>r.open&&r.stage==="5 Commit",A.sum,"$");
+m("o8","pipeline","Quoted $","Stage 4 Quoted.",r=>r.open&&r.stage==="4 Quoted",A.sum,"$");
+m("o9","pipeline","Quoted opps","Stage 4 count.",r=>r.open&&r.stage==="4 Quoted",A.count,"n");
+m("o10","pipeline","Proposal $ (open)","Stage 3 open amount.",r=>r.open&&r.stage==="3 Proposal",A.sum,"$");
+m("o11","pipeline","Closing Nov 2026","Open $ with close date in November.",r=>r.open&&r.clYM==="2026-11",A.sum,"$");
+m("o12","pipeline","Closing Dec 2026","Open $ with close date in December.",r=>r.open&&r.clYM==="2026-12",A.sum,"$");
+m("o13","pipeline","Past-due opps","Open with close date before Nov 17, 2026.",r=>r.open&&r.cl<ASOF,A.count,"n",{flag:true});
+m("o14","pipeline","Past-due $","Amount on past-due open opportunities.",r=>r.open&&r.cl<ASOF,A.sum,"$",{flag:true});
+m("o15","pipeline","Avg age of open opps","Days since creation (Salesforce Age).",isOpen,s=>avg(s,"age"),"d");
+m("o16","pipeline","Open opps aged > 180 days","Old opportunities still open.",r=>r.open&&r.age>180,A.count,"n",{flag:true});
+m("o17","pipeline","Avg days in current stage","Salesforce Stage Duration, open only.",isOpen,s=>avg(s,"stageDur"),"d");
+m("o18","pipeline","Stalled opps (> 90 d in stage)","Open and stuck in one stage for 90+ days.",r=>r.open&&r.stageDur>90,A.count,"n",{flag:true});
+m("o19","pipeline","Stalled $","Amount stuck > 90 days in stage.",r=>r.open&&r.stageDur>90,A.sum,"$",{flag:true});
+m("o20","pipeline","Pushed opps","Open with close date pushed at least once.",r=>r.open&&r.push>0,A.count,"n");
+m("o21","pipeline","Pushed 3+ times","Chronic slippage.",r=>r.open&&r.push>=3,A.count,"n",{flag:true});
+m("o22","pipeline","Avg push count (open)","Average close-date pushes.",isOpen,s=>avg(s,"push"),"n");
+m("o23","pipeline","Open with no activity logged","No Last Activity date.",r=>r.open&&!r.la,A.count,"n",{flag:true});
+m("o24","pipeline","Open, no activity in 30 days","Last activity > 30 days ago or never.",r=>r.open&&(r.actDays==null||r.actDays>30),A.count,"n",{flag:true});
+m("o25","pipeline","Open without products","Has Products = 0 — forecast can't roll to part level.",r=>r.open&&!r.hasProd,A.count,"n",{flag:true});
+m("o26","pipeline","Commissionable open $","Open $ that would pay commission if won.",r=>r.open&&r.comm,A.sum,"$");
+m("o27","pipeline","Americas open $","Open pipeline, Americas reps.",r=>r.open&&r.region==="Americas",A.sum,"$");
+m("o28","pipeline","EMEA open $","Open pipeline, EMEA reps.",r=>r.open&&r.region==="EMEA",A.sum,"$");
+m("o29","pipeline","New-logo share of open $","Open new-logo $ ÷ open $.",r=>r.open&&r.newLogo,share(s=>sum(s),R=>sum(R.filter(isOpen))),"%");
+m("o30","pipeline","Top account share of open $","Largest account's share of open pipeline.",isOpen,s=>{const g=groupBy(s,"acct");let b=0;g.forEach(a=>b=Math.max(b,sum(a)));return sum(s)?b/sum(s):null;},"%");
+m("o31","pipeline","Pipeline ÷ won $","Open $ ÷ won $ in filter — coverage of what's been booked.",isOpen,(s,R)=>{const w=sum(R.filter(isWon));return w?sum(s)/w:null;},"x");
+m("o32","pipeline","Rep firms with open pipeline","Distinct rep firms carrying open deals.",isOpen,A.reps,"n");
+
+// 4 WON
+m("w1","won","Won opportunities","Stage 6 Booked - WON.",isWon,A.count,"n");
+m("w2","won","Won $ (bookings)","Total Closed Won amount.",isWon,A.sum,"$");
+m("w3","won","Avg won deal","Won $ ÷ won count.",isWon,A.avg,"$");
+m("w4","won","Median won deal","Median booking.",isWon,A.med,"$");
+m("w5","won","Largest won deal","Single biggest booking.",isWon,A.max,"$");
+m("w6","won","Top-3 deals share of won $","Concentration of bookings.",isWon,s=>{const v=s.map(r=>r.amt).sort((a,b)=>b-a);const t=sum(s);return t?(v.slice(0,3).reduce((a,b)=>a+b,0))/t:null;},"%",{flag:true});
+m("w7","won","Commissionable won $","Americas: New Customer + Expansion only. EMEA: all business.",r=>r.won&&r.comm,A.sum,"$");
+m("w8","won","Non-commissionable won $","Americas repeat business — no commission owed.",r=>r.won&&!r.comm,A.sum,"$");
+m("w9","won","Commissionable share","Commissionable won ÷ all won.",r=>r.won&&r.comm,share(s=>sum(s),R=>sum(R.filter(isWon))),"%");
+m("w10","won","Est. commission owed","Commissionable won $ × commission rate (set in the scorecard controls).",r=>r.won&&r.comm,s=>sum(s)*RATE/100,"$",{note:"assumption"});
+m("w11","won","Won new-logo $","New customer bookings.",r=>r.won&&r.newLogo,A.sum,"$");
+m("w12","won","Won new logos","New customer bookings (count).",r=>r.won&&r.newLogo,A.count,"n");
+m("w13","won","Won expansion $","Cross-sell to existing customers.",r=>r.won&&/^Expansion/.test(r.btype),A.sum,"$");
+m("w14","won","Won repeat $","Repeat business.",r=>r.won&&r.btype==="Repeat Business",A.sum,"$");
+m("w15","won","Won new-program $","Bookings on new programs.",r=>r.won&&r.newProg,A.sum,"$");
+m("w16","won","Avg sales cycle","Created → close, won deals.",isWon,s=>avg(s.filter(r=>r.cycle!=null&&r.cycle>=0),"cycle"),"d");
+m("w17","won","Median sales cycle","Median created → close.",isWon,s=>med(s.filter(r=>r.cycle!=null&&r.cycle>=0),"cycle"),"d");
+m("w18","won","Same-day bookings","Created and won the same day — logged after the PO, not worked as pipeline.",r=>r.won&&r.age===0,A.count,"n",{flag:true});
+m("w19","won","Same-day bookings $","Amount entered after the fact.",r=>r.won&&r.age===0,A.sum,"$",{flag:true});
+m("w20","won","Won Q1-2026","Close Jan–Mar.",r=>r.won&&r.clQ==="Q1-2026",A.sum,"$");
+m("w21","won","Won Q2-2026","Close Apr–Jun.",r=>r.won&&r.clQ==="Q2-2026",A.sum,"$");
+m("w22","won","Won Q3-2026","Close Jul–Sep.",r=>r.won&&r.clQ==="Q3-2026",A.sum,"$");
+m("w23","won","Won Q4-2026 (QTD)","Close Oct–Dec, through Nov 17.",r=>r.won&&r.clQ==="Q4-2026",A.sum,"$");
+m("w24","won","Won T1 $","Tier 1 account bookings.",r=>r.won&&r.tier==="T1",A.sum,"$");
+m("w25","won","T1 share of won $","T1 won ÷ all won.",r=>r.won&&r.tier==="T1",share(s=>sum(s),R=>sum(R.filter(isWon))),"%");
+m("w26","won","Won accounts","Distinct accounts with a booking.",isWon,A.accts,"n");
+m("w27","won","Won parent accounts","Distinct parent (HQ) accounts.",r=>r.won&&r.parent,s=>dist(s,"parent"),"n");
+m("w28","won","Won $ per rep firm","Won $ ÷ rep firms with a win.",isWon,s=>sum(s)/(dist(s,"rep")||1),"$");
+m("w29","won","Possible duplicate bookings","Won opps sharing a name and account with another won opp.",r=>r.dupWon,A.count,"n",{flag:true});
+m("w30","won","Possible duplicate $","Amount on those bookings — verify before paying commission.",r=>r.dupWon,A.sum,"$",{flag:true});
+m("w31","won","Won with products","Bookings with product lines.",r=>r.won&&r.hasProd,A.count,"n");
+
+// REP NETWORK (roster-aware: counts include every rep on the roster, even with no 2026 opportunities)
+const U=(X,f)=>X.reps.filter(f);                              // reps in the current rep-level view
+const oppsOf=(s,reps)=>{const n=new Set(reps.map(r=>r.rep));return s.filter(r=>n.has(r.rep));};
+const actIn=r=>r.status==="Active"&&IN_SCOPE(r);
+m("r1","reps","Active reps on roster","Current rep agreements on the roster (all regions).",()=>true,(s,R,X)=>U(X,r=>r.status==="Active").length,"n",{rowsFn:(s,R,X)=>oppsOf(s,U(X,r=>r.status==="Active"))});
+m("r2","reps","Active reps · Americas","Roster reps in the USA.",()=>true,(s,R,X)=>U(X,r=>r.status==="Active"&&r.region==="Americas").length,"n",{rowsFn:(s,R,X)=>oppsOf(s,U(X,r=>r.status==="Active"&&r.region==="Americas"))});
+m("r3","reps","Active reps · EMEA","Kolt (Turkey) and Microelit (Italy, Greece).",()=>true,(s,R,X)=>U(X,r=>r.status==="Active"&&r.region==="EMEA").length,"n",{rowsFn:(s,R,X)=>oppsOf(s,U(X,r=>r.status==="Active"&&r.region==="EMEA"))});
+m("r4","reps","Active reps · APAC (out of scope)","Comcraft (2 agreements, Japan), Connekt (India), Hutec (South Korea).",()=>true,(s,R,X)=>U(X,r=>r.status==="Active"&&r.region==="APAC").length,"n");
+m("r5","reps","Active reps in scope (Americas + EMEA)","Active reps whose territories are in the Americas or EMEA.",()=>true,(s,R,X)=>U(X,actIn).length,"n",{rowsFn:(s,R,X)=>oppsOf(s,U(X,actIn))});
+m("r6","reps","Active reps to terminate on performance","Active Americas + EMEA reps that clear fewer than 2 of 3 performance bars (see the stack rank).",()=>true,(s,R,X)=>U(X,actIn).filter(r=>!PERF_KEEP.has(r.rep)).length,"n",{flag:true});
+m("r7","reps","Inactive (terminated) reps","Rep firms on 2026 opportunities that are not on the current roster.",()=>true,(s,R,X)=>U(X,r=>r.status==="Inactive").length,"n",{rowsFn:(s,R,X)=>oppsOf(s,U(X,r=>r.status==="Inactive"))});
+m("r8","reps","Active in-scope reps with no 2026 opps","On the roster but no Salesforce opportunity in 2026.",()=>true,(s,R,X)=>U(X,r=>actIn(r)&&r.opps===0).length,"n",{flag:true});
+m("r9","reps","Rep firms on 2026 opportunities","Distinct rep firms credited on an opportunity.",()=>true,A.reps,"n");
+m("r10","reps","Terminated reps' won $","2026 bookings credited to reps no longer on the roster.",r=>r.won&&r.status==="Inactive",A.sum,"$",{flag:true});
+m("r11","reps","Terminated reps' share of won $","Inactive-rep bookings ÷ all bookings.",r=>r.won&&r.status==="Inactive",share(s=>sum(s),R=>sum(R.filter(isWon))),"%",{flag:true});
+m("r12","reps","Terminated reps' open pipeline","Open $ that needs a new owner.",r=>r.open&&r.status==="Inactive",A.sum,"$",{flag:true});
+m("r13","reps","Terminated reps' open opps","Open opportunities to reassign.",r=>r.open&&r.status==="Inactive",A.count,"n",{flag:true});
+m("r14","reps","Active reps' won $","2026 bookings from current-roster reps.",r=>r.won&&r.status==="Active",A.sum,"$");
+m("r15","reps","Active reps' open pipeline","Open $ at current-roster reps.",r=>r.open&&r.status==="Active",A.sum,"$");
+m("r16","reps","Accounts with no active rep","Accounts where every 2026 opportunity was credited to a terminated rep.",()=>true,(s,R,X)=>X.orphan.length,"n",{rowsFn:(s,R,X)=>s.filter(r=>X.orphan.includes(r.acct)),flag:true});
+m("r17","reps","$ in territories no active rep covers","Billing state or country outside every active rep's contracted territory.",r=>r.terrRep==="No active rep",A.sum,"$",{flag:true});
+m("r18","reps","Open $ with no territory rep","Open pipeline outside every active territory.",r=>r.open&&r.terrRep==="No active rep",A.sum,"$",{flag:true});
+m("r19","reps","Terminated open $ an active rep can take","Inactive-rep open $ inside an active rep's territory.",r=>r.open&&r.status==="Inactive"&&r.terrRep!=="No active rep",A.sum,"$");
+m("r20","reps","Active-rep opps outside their territory","Credited to an active rep, billed outside that rep's contracted territory.",r=>r.inTerr==="Outside territory",A.count,"n",{flag:true});
+m("r21","reps","Active-rep opps on an OpCo not in contract","OpCo not listed on the rep's agreement.",r=>r.status==="Active"&&!r.opcoOk,A.count,"n",{flag:true});
+m("r22","reps","Active reps on the new contract","Roster: New Contract = x.",()=>true,(s,R,X)=>U(X,r=>r.status==="Active"&&r.newc).length,"n");
+m("r23","reps","Active reps with procuring cause","Roster: Rep Procuring Cause = Yes.",()=>true,(s,R,X)=>U(X,r=>r.status==="Active"&&r.proc==="Yes").length,"n");
+m("r24","reps","Commission calc upload in place","Roster: Commission calc upload = Yes.",()=>true,(s,R,X)=>U(X,r=>r.status==="Active"&&r.upload==="Yes").length,"n");
+m("r25","reps","In-scope actives without commission upload","Procuring-cause reps without the commission calc upload.",()=>true,(s,R,X)=>U(X,r=>actIn(r)&&r.proc==="Yes"&&r.upload!=="Yes").length,"n",{flag:true});
+m("r26","reps","Top rep share of won $","Largest rep firm's share of bookings.",isWon,s=>{const g=groupBy(s,"rep");let b=0;g.forEach(a=>b=Math.max(b,sum(a)));return sum(s)?b/sum(s):null;},"%");
+m("r27","reps","Won $ concentration (HHI)","Herfindahl index of won $ by rep (0–10,000; >2,500 = highly concentrated).",isWon,s=>{const t=sum(s);if(!t)return null;const g=groupBy(s,"rep");let h=0;g.forEach(a=>{h+=Math.pow(100*sum(a)/t,2);});return h;},"n",{flag:true});
+m("r28","reps","Named rep associates","Distinct individuals named at rep firms.",r=>!!r.assoc,s=>dist(s,"assoc"),"n");
+m("r29","reps","Opps with no rep associate","Rep firm on the deal but no individual named.",r=>!r.assoc,A.count,"n",{flag:true});
+m("r30","reps","Commission-free rep $","Won $ from Americas repeat business (rep paid $0).",r=>r.won&&!r.comm,A.sum,"$");
+m("r31","reps","Est. commission · active reps","Commissionable won $ at current-roster reps × rate.",r=>r.won&&r.comm&&r.status==="Active",s=>sum(s)*RATE/100,"$",{note:"assumption"});
+m("r32","reps","Est. commission · terminated reps","Commission on terminated reps' 2026 bookings × rate — check post-termination terms.",r=>r.won&&r.comm&&r.status==="Inactive",s=>sum(s)*RATE/100,"$",{note:"assumption",flag:true});
+m("r33","reps","Avg score · active in-scope reps","Mean composite score of active Americas + EMEA reps.",()=>true,(s,R,X)=>{const a=U(X,actIn);return a.length?a.reduce((x,r)=>x+r.score,0)/a.length:null;},"n");
+
+// ACCOUNTS / CONTACTS / ACTIVITY
+m("a1","accts","Accounts engaged","Distinct accounts with an opportunity.",()=>true,A.accts,"n");
+m("a2","accts","Parent accounts engaged","Distinct parent (HQ) accounts.",r=>!!r.parent,s=>dist(s,"parent"),"n");
+m("a3","accts","T1 accounts engaged","Distinct Tier 1 accounts.",r=>r.tier==="T1",A.accts,"n");
+m("a4","accts","T1 share of $","Tier 1 amount ÷ all amount.",r=>r.tier==="T1",share(s=>sum(s),R=>sum(R)),"%");
+m("a5","accts","Focus account share of $","Focus = 1 amount ÷ all.",r=>r.focus===1,share(s=>sum(s),R=>sum(R)),"%");
+m("a6","accts","Non-focus account $","Amount outside focus accounts.",r=>r.focus!==1,A.sum,"$");
+m("a7","accts","Core play $","Account Play = Core.",r=>r.play==="Core",A.sum,"$");
+m("a8","accts","Anchor play $","Account Play = Anchor.",r=>r.play==="Anchor",A.sum,"$");
+m("a9","accts","Account play blank","No account play assigned.",r=>!r.play,A.count,"n",{flag:true});
+m("a10","accts","Top account share of $","Largest account's share of all $.",()=>true,s=>{const g=groupBy(s,"acct");let b=0;g.forEach(a=>b=Math.max(b,sum(a)));return sum(s)?b/sum(s):null;},"%");
+m("a11","accts","$ per account","All $ ÷ accounts.",()=>true,s=>sum(s)/(dist(s,"acct")||1),"$");
+m("a12","accts","Contacts with email","Primary contacts with an email address.",r=>!!r.cemail,s=>dist(s,"cemail"),"n");
+m("a13","accts","Activity in last 30 days","Opportunities touched in the last 30 days.",r=>r.actDays!=null&&r.actDays>=0&&r.actDays<=30,A.count,"n");
+m("a14","accts","No activity logged","Opportunities with no Last Activity date.",r=>!r.la,A.count,"n",{flag:true});
+m("a15","accts","Avg days since activity","Opportunities with an activity date.",r=>r.actDays!=null&&r.actDays>=0,s=>avg(s,"actDays"),"d");
+m("a16","accts","Future-dated activity","Last Activity later than today — scheduled task or data error.",r=>r.actDays!=null&&r.actDays<0,A.count,"n",{flag:true});
+m("a17","accts","Close date before create date","Data error.",r=>r.cl&&r.c&&r.cl<r.c,A.count,"n",{flag:true});
+m("a18","accts","Non-A&D $","Amount outside Aerospace & Defense.",r=>r.industry!=="Aerospace & Defense",A.sum,"$");
+m("a19","accts","International $","Billing country outside the US.",r=>r.country!=="United States",A.sum,"$");
+m("a20","accts","OpCos represented","Distinct OpCos.",()=>true,s=>dist(s,"opco"),"n");
+m("a21","accts","REN $","Renaissance (Harvard, MA).",r=>r.opco==="REN",A.sum,"$");
+m("a22","accts","AEMI $","AEMI (San Diego).",r=>r.opco==="AEMI",A.sum,"$");
+m("a23","accts","CEN $","Central (NY).",r=>r.opco==="CEN",A.sum,"$");
+m("a24","accts","Accounts with 3+ opps","Multi-opportunity accounts.",()=>true,s=>{const g=groupBy(s,"acct");let n=0;g.forEach(a=>{if(a.length>=3)n++;});return n;},"n");
+
+const MEASURE_N=M.filter(x=>!x.pending).length;
+
+function evalM(mm,R,X){
+  const base=R.filter(r=>mm.sel(r,X));
+  const v=mm.agg(base,R,X);
+  const rows=mm.rowsFn?mm.rowsFn(base,R,X):base;
+  return {v,rows};
+}
+
+// ---------- charts (SVG) ----------
+const tip=document.getElementById("tip");
+function bindTip(el){el.querySelectorAll("[data-tip]").forEach(n=>{n.addEventListener("mousemove",e=>{tip.innerHTML=n.dataset.tip;tip.style.display="block";const x=Math.min(e.clientX+14,innerWidth-tip.offsetWidth-8);tip.style.left=x+"px";tip.style.top=(e.clientY+14)+"px";});n.addEventListener("mouseleave",()=>tip.style.display="none");});}
+function niceMax(v){if(v<=0)return 1;const p=Math.pow(10,Math.floor(Math.log10(v)));const n=v/p;return (n<=1?1:n<=2?2:n<=2.5?2.5:n<=5?5:10)*p;}
+function barH(el,items,o={}){
+  const fmt=o.fmt||$f;const W=640,lw=o.lw||190,rh=o.rh||24,top=6,H=top+items.length*rh+22;
+  const mxv=niceMax(Math.max(...items.map(i=>i.v),0));const sx=v=>lw+(W-lw-70)*(v/mxv);
+  let s=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(o.aria||"Bar chart")}">`;
+  for(let k=0;k<=4;k++){const x=sx(mxv*k/4);s+=`<line class="gl" x1="${x}" x2="${x}" y1="${top}" y2="${H-20}"/><text x="${x}" y="${H-6}" text-anchor="middle">${fmt(mxv*k/4)}</text>`;}
+  items.forEach((it,i)=>{const y=top+i*rh;const bw=Math.max(sx(it.v)-lw,it.v>0?2:0);const col=it.color||"var(--s1)";
+    s+=`<g class="mark" data-tip="${esc(it.tip||(it.label+": "+fmt(it.v)))}" ${o.onclick?`data-k="${esc(it.key??it.label)}"`:""}><rect x="0" y="${y}" width="${W}" height="${rh}" fill="transparent"/>`;
+    s+=`<text x="${lw-8}" y="${y+rh/2+4}" text-anchor="end">${esc(it.label.length>30?it.label.slice(0,29)+"…":it.label)}</text>`;
+    s+=`<rect x="${lw}" y="${y+4}" width="${bw}" height="${rh-8}" rx="4" fill="${col}" ${it.dim?'opacity=".45"':""}/>`;
+    s+=`<text class="val" x="${lw+bw+6}" y="${y+rh/2+4}">${fmt(it.v)}${it.suffix?esc(it.suffix):""}</text></g>`;});
+  if(o.markLine!=null){const y=top+o.markLine*rh;s+=`<line x1="0" x2="${W}" y1="${y}" y2="${y}" stroke="var(--crit)" stroke-dasharray="4 3" stroke-width="1.5"/><text x="${W-4}" y="${y-4}" text-anchor="end" style="fill:var(--crit);font-weight:700">${esc(o.markText||"keep line")}</text>`;}
+  s+=`<line class="ax" x1="${lw}" x2="${lw}" y1="${top}" y2="${H-20}"/></svg>`;
+  el.innerHTML=items.length?s:`<div class="muted" style="padding:20px 0">No data for this filter.</div>`;bindTip(el);
+  if(o.onclick)el.querySelectorAll("[data-k]").forEach(g=>g.onclick=()=>o.onclick(g.dataset.k));
+}
+function cols(el,labels,vals,o={}){
+  const fmt=o.fmt||$f;const W=640,H=230,l=52,b=26,t=14;const n=labels.length;const bw=(W-l-10)/n;
+  const mxv=niceMax(Math.max(...vals,0));const sy=v=>t+(H-t-b)*(1-v/mxv);
+  let s=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(o.aria||"Column chart")}">`;
+  for(let k=0;k<=4;k++){const y=sy(mxv*k/4);s+=`<line class="gl" x1="${l}" x2="${W-6}" y1="${y}" y2="${y}"/><text x="${l-6}" y="${y+4}" text-anchor="end">${fmt(mxv*k/4)}</text>`;}
+  const last=vals.reduce((a,v,i)=>v>0?i:a,-1);
+  labels.forEach((lb,i)=>{const x=l+i*bw;const y=sy(vals[i]);const h=H-b-y;
+    s+=`<g class="mark" data-tip="${esc(lb+": "+fmt(vals[i])+(o.tipX?o.tipX(i):""))}"><rect x="${x}" y="${t}" width="${bw}" height="${H-b-t}" fill="transparent"/><rect x="${x+bw*.18}" y="${y}" width="${bw*.64}" height="${Math.max(h,vals[i]>0?2:0)}" rx="4" fill="${o.color||"var(--s1)"}"/>`;
+    if(vals[i]>0&&(i===last||vals[i]===Math.max(...vals)))s+=`<text class="val" x="${x+bw/2}" y="${y-5}" text-anchor="middle">${fmt(vals[i])}</text>`;
+    s+=`<text x="${x+bw/2}" y="${H-8}" text-anchor="middle">${esc(lb)}</text></g>`;});
+  s+=`<line class="ax" x1="${l}" x2="${W-6}" y1="${H-b}" y2="${H-b}"/></svg>`;
+  el.innerHTML=s;bindTip(el);
+}
+function stackH(el,items,cats,colors,o={}){
+  const W=640,lw=190,rh=24,top=6,H=top+items.length*rh+22;
+  const mxv=niceMax(Math.max(...items.map(i=>cats.reduce((s,c)=>s+(i.parts[c]||0),0)),0));const sx=v=>(W-lw-70)*(v/mxv);
+  let s=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(o.aria||"Stacked bar chart")}">`;
+  for(let k=0;k<=4;k++){const x=lw+sx(mxv*k/4);s+=`<line class="gl" x1="${x}" x2="${x}" y1="${top}" y2="${H-20}"/><text x="${x}" y="${H-6}" text-anchor="middle">${$f(mxv*k/4)}</text>`;}
+  items.forEach((it,i)=>{const y=top+i*rh;let x=lw;const tot=cats.reduce((s,c)=>s+(it.parts[c]||0),0);
+    s+=`<text x="${lw-8}" y="${y+rh/2+4}" text-anchor="end">${esc(it.label.length>30?it.label.slice(0,29)+"…":it.label)}</text>`;
+    cats.forEach((c,ci)=>{const v=it.parts[c]||0;if(!v)return;const w=sx(v);s+=`<rect class="mark" data-tip="${esc(it.label+" · "+c+": "+$f(v)+" ("+pf(v/tot)+")")}" x="${x}" y="${y+4}" width="${Math.max(w-2,1)}" height="${rh-8}" rx="3" fill="${colors[ci]}"/>`;x+=w;});
+    s+=`<text class="val" x="${x+6}" y="${y+rh/2+4}">${$f(tot)}</text>`;});
+  s+=`</svg>`;el.innerHTML=s;bindTip(el);
+}
+function pareto(el,reps){
+  const W=640,H=230,l=46,b=34,t=14;const tot=reps.reduce((s,r)=>s+r.won,0)||1;let c=0;const pts=reps.map((r,i)=>{c+=r.won;return [i,c/tot];});
+  const n=Math.max(reps.length,1);const sx=i=>l+(W-l-16)*(n===1?0.5:i/(n-1));const sy=v=>t+(H-t-b)*(1-v);
+  let s=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Cumulative won share by rep rank">`;
+  [0,.25,.5,.75,1].forEach(v=>{s+=`<line class="gl" x1="${l}" x2="${W-10}" y1="${sy(v)}" y2="${sy(v)}"/><text x="${l-6}" y="${sy(v)+4}" text-anchor="end">${v*100}%</text>`;});
+  if(reps.length){
+    s+=`<path d="M${sx(0)},${sy(0)} ${pts.map(p=>"L"+sx(p[0])+","+sy(p[1])).join(" ")} L${sx(n-1)},${sy(0)} Z" fill="var(--s1)" opacity=".10"/>`;
+    s+=`<path d="${pts.map((p,i)=>(i?"L":"M")+sx(p[0])+","+sy(p[1])).join(" ")}" fill="none" stroke="var(--s1)" stroke-width="2"/>`;
+    pts.forEach((p,i)=>{const r=reps[i];s+=`<circle class="mark" data-tip="${esc("#"+(i+1)+" "+r.rep+" · cumulative "+pf(p[1]))}" cx="${sx(p[0])}" cy="${sy(p[1])}" r="${r.keep?6:4}" fill="${r.keep?"var(--s1)":"var(--surface)"}" stroke="var(--s1)" stroke-width="2"/>`;
+      s+=`<text x="${sx(p[0])}" y="${H-b+14}" text-anchor="middle">${i+1}</text>`;});
+    const k=reps.filter(r=>r.keep).length-1;if(k>=0){s+=`<line x1="${sx(k)}" x2="${sx(k)}" y1="${t}" y2="${H-b}" stroke="var(--crit)" stroke-dasharray="4 3"/><text class="val" x="${sx(k)+6}" y="${sy(pts[k][1])+16}">Top ${k+1}: ${pf(pts[k][1])}</text>`;}
+  }
+  s+=`<text x="${(W+l)/2}" y="${H-4}" text-anchor="middle">rep rank (by score)</text></svg>`;el.innerHTML=s;bindTip(el);
+}
+
+// ---------- render ----------
+let X=null;
+function render(rebuildBtns=true){
+  const R=filtered();X=context(R);
+  document.getElementById("subline").textContent=`2026 Salesforce opportunity report · ${DATA.length} rep-involved opportunities · data as of Nov 17, 2026 · prepared for Fernando`;
+  document.getElementById("countline").textContent=`${R.length} of ${DATA.length} opportunities in view · ${REPS.length} reps on roster + terminated · ${MEASURE_N} measures`;
+  updateBtns();renderMotion(R);renderRat(R);renderCharts(R);renderSecs(R);
+  document.querySelectorAll(".fpanel.open").forEach(p=>{const k=p.parentElement.querySelector(".fbtn").id.slice(2);const f=FILTERS.find(x=>x.k===k);if(f&&!f.tree){const q=p.querySelector("input[type=search]")?.value||"";renderPanel(f,p);const qi=p.querySelector("input[type=search]");if(qi){qi.value=q;qi.dispatchEvent(new Event("input"));}}});
+}
+function renderMotion(R){
+  const open=R.filter(isOpen),won=R.filter(isWon);
+  const tiles=[
+   {k:"all",step:"All motions",v:$f(sum(R)),s:`${R.length} opps · every measure shown`},
+   {k:"demand",step:"1 · Demand gen",v:nf(R.length),s:`opps created · ${pf(sum(R.filter(r=>r.lead==="Referral - Rep"))/(sum(R)||1))} rep-referred $`},
+   {k:"prospect",step:"2 · Prospecting",v:nf(open.filter(r=>r.newLogo).length),s:`open new-logo opps · build-out pending`},
+   {k:"pipeline",step:"3 · Pipeline mgmt",v:$f(sum(open)),s:`${open.length} open · ${$f(sum(open,"w"))} weighted`},
+   {k:"won",step:"4 · Won business",v:$f(sum(won)),s:`${won.length} bookings · ${$f(sum(won.filter(r=>r.comm)))} commissionable`},
+   {k:"reps",step:"Rep network",v:nf(X.reps.filter(r=>r.status==="Active"&&IN_SCOPE(r)).length),s:`active in Americas + EMEA · ${X.reps.filter(r=>r.status==="Active"&&IN_SCOPE(r)&&r.keep).length} retain on performance · ${X.reps.filter(r=>r.status==="Inactive").length} terminated`},
+  ];
+  const host=document.getElementById("motion");
+  host.innerHTML=tiles.map(t=>`<button type="button" class="mtile" data-k="${t.k}" aria-pressed="${MOTION===t.k}"><span class="step">${t.step}</span><span class="v">${t.v}</span><span class="s">${t.s}</span></button>`).join("");
+  host.querySelectorAll(".mtile").forEach(b=>b.onclick=()=>{MOTION=b.dataset.k;renderMotion(R);renderSecs(R);document.getElementById("secs").scrollIntoView({behavior:"smooth",block:"start"});});
+}
+function renderRat(R){
+  const c=document.getElementById("controls");
+  if(!c.dataset.built){
+    c.innerHTML=`<label>Commission rate <input type="number" id="rate" min="0" max="20" step="0.5" value="${RATE}">% <span class="muted">(assumption)</span></label>
+      ${Object.entries({comm:"Commissionable won",won:"Total won",pipe:"Weighted pipeline",newwork:"New logos + programs",accts:"Accounts",hyg:"Activity hygiene"}).map(([k,l])=>`<label title="Weight">${l} <input type="range" min="0" max="50" value="${W[k]}" data-w="${k}" aria-label="${l} weight"><b id="wv_${k}">${W[k]}</b></label>`).join("")}
+      <button type="button" class="btn" id="wreset">Default weights</button>`;
+    c.dataset.built=1;
+    c.querySelector("#rate").oninput=e=>{RATE=Math.max(0,+e.target.value||0);render();};
+    c.querySelectorAll("[data-w]").forEach(i=>i.oninput=()=>{W[i.dataset.w]=+i.value;document.getElementById("wv_"+i.dataset.w).textContent=i.value;render();});
+    c.querySelector("#wreset").onclick=()=>{Object.assign(W,{comm:30,won:15,pipe:20,newwork:15,accts:10,hyg:10});c.querySelectorAll("[data-w]").forEach(i=>{i.value=W[i.dataset.w];document.getElementById("wv_"+i.dataset.w).textContent=W[i.dataset.w];});render();};
+  }
+  const reps=X.reps,act=reps.filter(r=>r.status==="Active"),ina=reps.filter(r=>r.status==="Inactive"),inS=act.filter(r=>IN_SCOPE(r));
+  const won=R.filter(isWon),open=R.filter(isOpen);const tw=sum(won)||1,tp=sum(open)||1;
+  const inaWon=sum(won.filter(r=>r.status==="Inactive")),inaOpen=sum(open.filter(r=>r.status==="Inactive"));
+  const nk=inS.filter(r=>r.keep).length,nc=inS.length-nk;
+  const k=[
+   ["Active reps in scope",nf(inS.length),`${inS.filter(r=>r.region==="Americas").length} Americas · ${inS.filter(r=>r.region==="EMEA").length} EMEA · ${nk} retain · ${nc} terminate on performance`, nc?"cut":"keep", nc?`✕ ${nc} to terminate`:"✓ all retain"],
+   ["Inactive (terminated)",nf(ina.length),`${ina.filter(r=>r.region==="Americas").length} Americas · ${ina.filter(r=>r.region==="EMEA").length} EMEA`],
+   ["Terminated reps' 2026 won $",$f(inaWon),`${pf(inaWon/tw)} of bookings in view`],
+   ["Open $ to reassign",$f(inaOpen),`${open.filter(r=>r.status==="Inactive").length} open opps · ${pf(inaOpen/tp)} of pipeline`],
+   ["Accounts with no active rep",nf(X.orphan.length),"all 2026 opps credited to terminated reps"],
+   ["In-scope actives with no 2026 opps",nf(inS.filter(r=>r.opps===0).length),inS.filter(r=>r.opps===0).map(r=>r.rep).join(", ")||"none"],
+  ];
+  document.getElementById("ratKpis").innerHTML=k.map(([a,b,c,p,pt])=>`<div class="kpi"><div class="lbl">${a}</div><div class="v">${b} ${p?`<span class="pill ${p}" style="font-size:11px;vertical-align:middle">${pt}</span>`:""}</div><div class="s">${esc(c)}</div></div>`).join("");
+  const scored=reps.filter(r=>IN_SCOPE(r));
+  barH(document.getElementById("cScore"),scored.map(r=>({label:r.rep,key:r.rep,v:r.score,dim:r.status!=="Active",color:r.status==="Active"?"var(--s1)":"var(--s2)",tip:`${r.rep} · ${r.status} · score ${r.score.toFixed(1)} · won ${$f(r.won)} · comm ${$f(r.comm)} · open ${$f(r.pipe)}`})),{fmt:v=>v.toFixed(0),markLine:Math.min(inS.length,scored.length),markText:"active ▲ · terminated ▼",aria:"Rep scores",onclick:k=>setFilter("rep",k)});
+  // coverage chart: 2026 $ by territory owner
+  const gt=groupBy(R,"terrRep");barH(document.getElementById("cPareto"),[...gt].map(([k,v])=>({label:k,key:k,v:sum(v),color:k==="No active rep"?"var(--s2)":"var(--s1)",tip:`${k}: ${$f(sum(v))} · ${v.length} opps · ${$f(sum(v.filter(isOpen)))} open`})).sort((a,b)=>b.v-a.v),{aria:"Coverage by territory owner",onclick:k=>setFilter("terrRep",k)});
+  const cols_=[["#","rank","num"],["Rep firm","rep"],["Status","status"],["Region","region"],["Territory","terr"],["Call","call"],["Score","score","num"],["2026 opps","opps","num"],["Won $","won","num"],["Commissionable $","comm","num"],["Open $","pipe","num"],["New logos + programs","newwork","num"],["Accounts","accts","num"],["OpCos on contract","opc"],["New contract","newc"],["Procuring cause","proc"],["Commission upload","upload"]];
+  const t=document.getElementById("repTbl");const ms=Math.max(...reps.map(r=>r.score),1);
+  const pill=r=>({keep:`<span class="pill keep">✓ Active · retain on performance</span>`,cut:`<span class="pill cut">✕ Active · terminate on performance</span>`,oos:`<span class="pill" style="background:var(--surface-2);color:var(--ink-2)">Active · APAC (out of scope)</span>`,termed:r.pipe>0?`<span class="pill cut">✕ Terminated · reassign ${$f(r.pipe)}</span>`:`<span class="pill cut">✕ Terminated</span>`})[r.call];
+  t.innerHTML=`<thead><tr>${cols_.map(c=>`<th class="${c[2]||""}">${c[0]}</th>`).join("")}</tr></thead><tbody>${reps.map(r=>`<tr class="${r.status==="Active"?"":"cutrow"}"><td class="num">${r.rank}</td><td><button class="lnk" type="button" data-rep="${esc(r.rep)}">${esc(r.rep)}</button></td><td>${r.status}</td><td>${r.region}</td><td class="wrapcell" style="min-width:180px">${esc(r.terr)}</td><td>${pill(r)}</td><td class="num"><span class="sbar" style="width:${Math.round(40*r.score/ms)}px"></span>${r.score.toFixed(1)}</td><td class="num">${r.opps}</td><td class="num">${$f(r.won)}</td><td class="num">${$f(r.comm)}</td><td class="num">${$f(r.pipe)}</td><td class="num">${r.newwork}</td><td class="num">${r.accts}</td><td>${r.opcos.join(", ")||"—"}</td><td>${r.status==="Active"?(r.newc?"Yes":"No"):"—"}</td><td>${r.proc||"—"}</td><td>${r.upload||"—"}</td></tr>`).join("")}</tbody>`;
+  t.querySelectorAll("[data-rep]").forEach(b=>b.onclick=()=>openRep(b.dataset.rep));
+  // reassignment table
+  const rs=document.getElementById("reassign");
+  const ga=groupBy(R.filter(r=>r.status==="Inactive"),"acct");
+  const rowsA=[...ga].map(([a,v])=>({a,reps:[...new Set(v.map(r=>r.rep))].join(", "),loc:[v[0].state,v[0].country].filter(Boolean).join(", "),won:sum(v.filter(isWon)),open:sum(v.filter(isOpen)),to:v[0].terrRep,active:X.orphan.includes(a)?"No":"Yes"})).sort((x,y)=>y.open-x.open||y.won-x.won);
+  rs.innerHTML=`<thead><tr><th>Account</th><th>Terminated rep</th><th>Location</th><th class="num">2026 won $</th><th class="num">Open $</th><th>Active rep by territory</th><th>Active rep also on account</th></tr></thead><tbody>${rowsA.map(x=>`<tr><td><button class="lnk" type="button" data-acct="${esc(x.a)}">${esc(x.a)}</button></td><td>${esc(x.reps)}</td><td>${esc(x.loc)}</td><td class="num">${$f(x.won)}</td><td class="num">${$f(x.open)}</td><td>${x.to==="No active rep"?`<span class="pill cut">No active rep · house or recruit</span>`:`<span class="pill keep">${esc(x.to)}</span>`}</td><td>${x.active}</td></tr>`).join("")||`<tr><td colspan="7" class="muted">No terminated-rep accounts in this view.</td></tr>`}</tbody>`;
+  rs.querySelectorAll("[data-acct]").forEach(b=>b.onclick=()=>setFilter("acct",b.dataset.acct));
+  document.getElementById("ratFoot").innerHTML=`Status comes from the current rep roster: reps on 2026 opportunities but not on the roster are terminated (Inactive). Scope is Americas + EMEA; APAC reps (Comcraft ×2, Connekt, Hutec) are shown but excluded. Score blends each rep's value relative to the top rep (square-root scaled): commissionable won ${W.comm}, total won ${W.won}, weighted pipeline ${W.pipe}, new logos + new programs ${W.newwork}, accounts ${W.accts}, activity hygiene ${W.hyg}. Reps with no 2026 opportunities score 0. Commission rule: Americas pays on New Customer + Expansion; EMEA pays on all business. Territory owner = active rep whose contracted states or countries include the billing address.`;
+}
+function renderCharts(R){
+  const host=document.getElementById("charts");
+  if(!host.dataset.built){
+    const defs=[["cWonM","Won $ by close month (2026)","Bookings trend"],["cCreM","Opportunities created by month","Demand trend (count)"],["cPipeM","Open pipeline by close month","When open $ is expected"],["cRepWon","Won $ by rep firm","Click a bar to filter"],["cRepPipe","Open pipeline by rep firm","Click a bar to filter"],["cMix","Business-type mix by rep firm","Commissionable in Americas = New Customer + Expansion"],["cStage","Pipeline by stage","Open + won, amount"],["cLead","$ by lead source","Who sourced the demand"],["cAcct","Top 10 accounts by $","Click a bar to filter"],["cOpco","$ by OpCo · won vs open","Separate bars per state"],["cTier","$ by account tier","T1 / T2 / T3"],["cAct","Open opps by last-activity age","Hygiene"]];
+    host.innerHTML=defs.map(([id,t,s])=>`<div class="panel"><div class="panel-h"><h3>${t}</h3><span class="muted" style="font-size:12px">${s}</span></div><div class="panel-b"><div id="${id}L"></div><div class="chart" id="${id}"></div></div></div>`).join("");
+    host.dataset.built=1;
+  }
+  const mlab=MONTHS.map(m=>m);
+  const won=R.filter(isWon),open=R.filter(isOpen);
+  const byM=(a,key,f)=>MONTHS.map((_,i)=>{const k=`2026-${String(i+1).padStart(2,"0")}`;const s=a.filter(r=>r[key]===k);return f(s);});
+  cols(document.getElementById("cWonM"),mlab,byM(won,"clYM",s=>sum(s)),{aria:"Won by month",tipX:i=>""});
+  cols(document.getElementById("cCreM"),mlab,byM(R,"cYM",s=>s.length),{fmt:v=>nf(Math.round(v)),aria:"Created by month",color:"var(--s3)"});
+  cols(document.getElementById("cPipeM"),mlab,byM(open,"clYM",s=>sum(s)),{aria:"Open pipeline by close month",color:"var(--s2)"});
+  const repItems=(a)=>{const g=groupBy(a,"rep");return [...g].map(([k,v])=>{const st=REPMAP.get(k).status;return {label:k,key:k,v:sum(v),dim:st!=="Active",color:st==="Active"?"var(--s1)":"var(--s2)",tip:`${k} (${st}): ${$f(sum(v))} · ${v.length} opps`};}).sort((a,b)=>b.v-a.v);};
+  barH(document.getElementById("cRepWon"),repItems(won),{aria:"Won by rep",onclick:k=>setFilter("rep",k)});
+  document.getElementById("cRepWonL").innerHTML=`<div class="legend"><span style="--c:var(--s1)">Active rep</span><span style="--c:var(--s2)">Terminated rep (faded)</span></div>`;
+  barH(document.getElementById("cRepPipe"),repItems(open),{aria:"Open by rep",onclick:k=>setFilter("rep",k)});
+  const cats=["New Customer (New Logo or Site Only)","Expansion (Existing Customer/Cross Sell)","Repeat Business"],cc=["var(--s1)","var(--s3)","var(--s2)"];
+  document.getElementById("cMixL").innerHTML=`<div class="legend"><span style="--c:var(--s1)">New customer</span><span style="--c:var(--s3)">Expansion</span><span style="--c:var(--s2)">Repeat business</span></div>`;
+  const gm=groupBy(R,"rep");stackH(document.getElementById("cMix"),[...gm].map(([k,v])=>({label:k,parts:Object.fromEntries(cats.map(c=>[c,sum(v.filter(r=>r.btype===c))]))})).sort((a,b)=>Object.values(b.parts).reduce((x,y)=>x+y,0)-Object.values(a.parts).reduce((x,y)=>x+y,0)),cats,cc,{aria:"Business type mix"});
+  const st=["2 Solutioning","3 Proposal","4 Quoted","5 Commit","6 Booked - WON"],ramp=["#86b6ef","#5598e7","#2a78d6","#1c5cab","#104281"];
+  barH(document.getElementById("cStage"),st.map((s,i)=>{const a=R.filter(r=>r.stage===s);return {label:s,key:s,v:sum(a),color:ramp[i],tip:`${s}: ${$f(sum(a))} · ${a.length} opps`};}),{aria:"By stage",onclick:k=>setFilter("stage",k)});
+  const gl=groupBy(R,"leadN");barH(document.getElementById("cLead"),[...gl].map(([k,v])=>({label:k,key:k,v:sum(v),tip:`${k}: ${$f(sum(v))} · ${v.length} opps`})).sort((a,b)=>b.v-a.v),{aria:"By lead source",onclick:k=>setFilter("leadN",k)});
+  const ga=groupBy(R,"acct");barH(document.getElementById("cAcct"),[...ga].map(([k,v])=>({label:k,key:k,v:sum(v),tip:`${k}: ${$f(sum(v))} · ${v.length} opps · reps: ${[...new Set(v.map(r=>r.rep))].join(", ")}`})).sort((a,b)=>b.v-a.v).slice(0,10),{aria:"Top accounts",onclick:k=>setFilter("acct",k)});
+  const go=groupBy(R,"opco");const oi=[];[...go].sort((a,b)=>sum(b[1])-sum(a[1])).forEach(([k,v])=>{oi.push({label:k+" · won",key:k,v:sum(v.filter(isWon))});oi.push({label:k+" · open",key:k,v:sum(v.filter(isOpen)),color:"var(--s2)"});});
+  document.getElementById("cOpcoL").innerHTML=`<div class="legend"><span style="--c:var(--s1)">Won</span><span style="--c:var(--s2)">Open</span></div>`;
+  barH(document.getElementById("cOpco"),oi,{aria:"By OpCo",onclick:k=>setFilter("opco",k)});
+  const gt=groupBy(R,"tierN");barH(document.getElementById("cTier"),[...gt].map(([k,v])=>({label:k,key:k,v:sum(v)})).sort((a,b)=>b.v-a.v),{aria:"By tier",onclick:k=>setFilter("tierN",k)});
+  const order=["≤ 30 days","31–90 days","> 90 days","No activity logged","Future-dated"];const gac=groupBy(open,"actBucket");
+  barH(document.getElementById("cAct"),order.filter(k=>gac.has(k)).map(k=>({label:k,key:k,v:gac.get(k).length,color:k==="≤ 30 days"?"var(--s3)":"var(--s4)",tip:`${k}: ${gac.get(k).length} open opps · ${$f(sum(gac.get(k)))}`})),{fmt:v=>nf(Math.round(v)),aria:"Activity age",onclick:k=>setFilter("actBucket",k)});
+}
+function cardHTML(mm,R){
+  if(mm.pending)return `<div class="card pending" aria-disabled="true"><span class="t">${esc(mm.label)}</span><span class="v">—</span><span class="s">${esc(mm.desc)}</span></div>`;
+  const {v,rows}=evalM(mm,R,X);
+  return `<button type="button" class="card ${mm.flag?"flagged":""}" data-m="${mm.id}" title="${esc(mm.desc)}"><span class="t">${esc(mm.label)}</span><span class="v">${FMT[mm.fmt](v)}</span><span class="s">${rows.length} opps · ${$f(sum(rows))}</span><span class="go">Details →</span></button>`;
+}
+function renderSecs(R){
+  const host=document.getElementById("secs");
+  const show=SECS.filter(s=>MOTION==="all"||s.k===MOTION);
+  host.innerHTML=show.map(s=>`<div class="panel"><div class="panel-h"><div class="sec-h"><span class="tag">${s.tag}</span><h2>${s.title}</h2></div><span class="muted" style="font-size:12px">${M.filter(x=>x.sec===s.k&&!x.pending).length} measures · ${esc(s.desc)}</span></div><div class="panel-b"><div class="cards">${M.filter(x=>x.sec===s.k).map(x=>cardHTML(x,R)).join("")}</div></div></div>`).join("")+(MOTION!=="all"?`<div><button class="btn" type="button" id="showAll">Show all ${MEASURE_N} measures</button></div>`:"");
+  host.querySelectorAll("[data-m]").forEach(b=>b.onclick=()=>openMeasure(b.dataset.m));
+  const sa=document.getElementById("showAll");if(sa)sa.onclick=()=>{MOTION="all";render();};
+}
+
+// ---------- drill-down ----------
+const modal=document.getElementById("modal"),mbox=document.getElementById("mbox");let lastFocus=null;
+modal.onclick=e=>{if(e.target===modal)closeModal();};
+function closeModal(){if(!modal.classList.contains("open"))return;modal.classList.remove("open");tip.style.display="none";if(lastFocus)lastFocus.focus();}
+const TCOLS=[["Opportunity","name"],["Rep firm","rep"],["OpCo","opco"],["Account","acct"],["Stage","stage"],["Amount","amt","num","$"],["Business type","btype"],["Commission","comm","","c"],["Created","created"],["Close","close"],["Age","age","num","n"],["Pushes","push","num","n"],["Last activity","lastAct"],["Lead source","leadN"],["Owner","owner"],["Tier","tierN"],["Region","region"]];
+function tableHTML(rows,sk="amt",dir=-1){
+  const rs=[...rows].sort((a,b)=>{const x=a[sk],y=b[sk];return (typeof x==="number"&&typeof y==="number"?x-y:String(x??"").localeCompare(String(y??"")))*dir;});
+  return `<thead><tr>${TCOLS.map(c=>`<th class="${c[2]||""}" data-sk="${c[1]}">${c[0]}${sk===c[1]?(dir<0?" ↓":" ↑"):""}</th>`).join("")}</tr></thead><tbody>${rs.map(r=>`<tr>${TCOLS.map(c=>{let v=r[c[1]];if(c[3]==="$")v=$full(v);else if(c[3]==="c")v=r.comm?"Yes":"No";else if(c[3]==="n")v=nf(v);return `<td class="${c[2]||""}${c[1]==="name"?" wrapcell":""}">${esc(v)}</td>`;}).join("")}</tr>`).join("")}</tbody><tfoot><tr><td><b>${rows.length} opportunities</b></td><td></td><td></td><td></td><td></td><td class="num"><b>${$full(sum(rows))}</b></td>${"<td></td>".repeat(TCOLS.length-6)}</tr></tfoot>`;
+}
+function drillBody(title,valueHTML,def,rows,related,R){
+  const won=rows.filter(isWon),open=rows.filter(isOpen);
+  const kp=[["Opportunities",nf(rows.length)],["Total $",$f(sum(rows))],["Avg $",$f(avg(rows))],["Won $",$f(sum(won))],["Open $",$f(sum(open))],["Weighted open $",$f(sum(open,"w"))],["Commissionable won $",$f(sum(won.filter(r=>r.comm)))],["Accounts",nf(dist(rows,"acct"))],["Rep firms",nf(dist(rows,"rep"))],["Avg age",df(avg(rows,"age"))],["New logos",nf(rows.filter(r=>r.newLogo).length)],["Share of view $",pf(sum(rows)/(sum(R)||1))]];
+  mbox.innerHTML=`<div class="mhead"><div><div class="lbl">Drill-down</div><h2 id="mTitle" style="font-size:20px;text-transform:none;letter-spacing:0">${esc(title)}</h2><div class="big">${valueHTML}</div><div class="def">${esc(def)}</div></div><div style="display:flex;gap:8px"><button class="btn" type="button" id="mCopy">Copy table</button><button class="btn primary" type="button" id="mClose" aria-label="Close drill-down">Close ✕</button></div></div>
+  <div class="ratgrid">${kp.map(([a,b])=>`<div class="kpi"><div class="lbl">${a}</div><div class="v">${b}</div></div>`).join("")}</div>
+  <div class="mgrid"><div class="panel"><div class="panel-h"><h3>By rep firm</h3><span class="muted" style="font-size:12px">click to filter dashboard</span></div><div class="panel-b"><div class="chart" id="mRep"></div></div></div>
+  <div class="panel"><div class="panel-h"><h3>By month (close date)</h3></div><div class="panel-b"><div class="chart" id="mMon"></div></div></div></div>
+  ${related.length?`<div class="panel"><div class="panel-h"><h3>Related measures for this cut</h3><span class="muted" style="font-size:12px">computed on the same filtered view</span></div><div class="panel-b related">${related.map(x=>cardHTML(x,R)).join("")}</div></div>`:""}
+  <div class="panel"><div class="panel-h"><h3>Data behind this measure</h3><span class="muted" style="font-size:12px">click a column to sort</span></div><div class="panel-b"><div class="tbl-wrap" style="max-height:440px;overflow:auto"><table id="mTbl">${tableHTML(rows)}</table></div></div></div>`;
+  const g=groupBy(rows,"rep");barH(document.getElementById("mRep"),[...g].map(([k,v])=>({label:k,key:k,v:sum(v),dim:REPMAP.get(k).status!=="Active",color:REPMAP.get(k).status==="Active"?"var(--s1)":"var(--s2)",tip:`${k} (${REPMAP.get(k).status}): ${$f(sum(v))} · ${v.length} opps`})).sort((a,b)=>b.v-a.v),{onclick:k=>setFilter("rep",k)});
+  cols(document.getElementById("mMon"),MONTHS,MONTHS.map((_,i)=>sum(rows.filter(r=>r.clYM===`2026-${String(i+1).padStart(2,"0")}`))));
+  let sk="amt",dir=-1;const tb=document.getElementById("mTbl");
+  tb.onclick=e=>{const th=e.target.closest("th");if(!th)return;const k=th.dataset.sk;dir=(sk===k)?-dir:-1;sk=k;tb.innerHTML=tableHTML(rows,sk,dir);};
+  mbox.querySelectorAll(".related [data-m]").forEach(b=>b.onclick=()=>openMeasure(b.dataset.m));
+  document.getElementById("mClose").onclick=closeModal;
+  document.getElementById("mCopy").onclick=async e=>{const tsv=[TCOLS.map(c=>c[0]).join("\t"),...rows.map(r=>TCOLS.map(c=>c[3]==="c"?(r.comm?"Yes":"No"):(r[c[1]]??"")).join("\t"))].join("\n");try{await navigator.clipboard.writeText(tsv);e.target.textContent="Copied ✓";}catch{e.target.textContent="Copy blocked";}setTimeout(()=>e.target.textContent="Copy table",1600);};
+  if(!modal.classList.contains("open")){lastFocus=document.activeElement;modal.classList.add("open");}
+  modal.scrollTop=0;document.getElementById("mClose").focus();
+}
+function openMeasure(id){
+  const R=filtered();const mm=M.find(x=>x.id===id);const {v,rows}=evalM(mm,R,X);
+  const sib=M.filter(x=>x.sec===mm.sec&&x.id!==id&&!x.pending);const i=M.indexOf(mm);
+  const related=[...sib].sort((a,b)=>Math.abs(M.indexOf(a)-i)-Math.abs(M.indexOf(b)-i)).slice(0,8);
+  drillBody(mm.label,FMT[mm.fmt](v),mm.desc+(mm.note==="assumption"?` Rate = ${RATE}% (editable in the scorecard controls).`:""),rows,related,R);
+}
+function openRep(rep){
+  const R=filtered();const rr=X.reps.find(r=>r.rep===rep)||scoreReps(R).find(r=>r.rep===rep)||{...REPMAP.get(rep),score:0,rank:"—",opps:0,accts:0,newwork:0,act30:0,push:0,call:REPMAP.get(rep).status==="Active"?"none":"termed"};
+  const info=REPMAP.get(rep);const rows=R.filter(r=>r.rep===rep);
+  const related=["w2","w7","o2","o3","o13","o24","d5","w18","w29","a1"].map(id=>M.find(x=>x.id===id));
+  const callTxt={keep:'<span class="pill keep">✓ Active · retain on performance</span>',cut:'<span class="pill cut">✕ Active · terminate on performance</span>',oos:'<span class="pill">Active · APAC (out of scope)</span>',termed:'<span class="pill cut">✕ Terminated</span>'}[rr.call]||"";
+  const def=`${info.status} · ${info.region} · Territory: ${info.terr}${info.status==="Active"?` · OpCos on contract: ${info.opcos.join(", ")} · New contract: ${info.newc?"Yes":"No"} · Procuring cause: ${info.proc||"—"} · Commission upload: ${info.upload||"—"}`:""}. 2026: ${rows.length} opportunities across ${dist(rows,"acct")} accounts${rows.length?` · activity ≤30 days on ${pf(rr.act30)} of opps · avg ${nf(rr.push)} pushes`:""}.`;
+  drillBody(rep,`Score ${Number(rr.score).toFixed(1)} ${callTxt}`,def,rows,[],R);
+  const host=document.createElement("div");host.className="panel";host.innerHTML=`<div class="panel-h"><h3>Rep measures</h3><span class="muted" style="font-size:12px">this rep only</span></div><div class="panel-b related">${related.map(x=>{const {v,rows:rw}=evalM(x,rows,X);return `<div class="kpi"><div class="lbl">${esc(x.label)}</div><div class="v">${FMT[x.fmt](v)}</div><div class="s">${rw.length} opps</div></div>`;}).join("")}</div>`;
+  mbox.insertBefore(host,mbox.children[2]);
+}
+
+// ---------- brief (full dataset, static) ----------
+function brief(){
+  const save=repLevel.map(k=>[k,SEL[k]]);repLevel.forEach(k=>SEL[k]=new Set());
+  const Xa=context(DATA);save.forEach(([k,v])=>SEL[k]=v);
+  const reps=Xa.reps,act=reps.filter(r=>r.status==="Active"),inS=act.filter(r=>IN_SCOPE(r)),ina=reps.filter(r=>r.status==="Inactive");
+  const won=DATA.filter(isWon),open=DATA.filter(isOpen);const tw=sum(won),tp=sum(open);
+  const iw=sum(won.filter(r=>r.status==="Inactive")),io=sum(open.filter(r=>r.status==="Inactive"));
+  const ioCov=open.filter(r=>r.status==="Inactive"&&r.terrRep!=="No active rep");
+  const noRep=DATA.filter(r=>r.terrRep==="No active rep");
+  const emeaOpen=open.filter(r=>r.region==="EMEA");
+  const zero=inS.filter(r=>r.opps===0);
+  const top2=[...won].sort((a,b)=>b.amt-a.amt).slice(0,2);
+  const outT=DATA.filter(r=>r.inTerr==="Outside territory");
+  const items=[
+   `<b>On performance, retain ${PERF_KEEP.size} of ${inS.length} active Americas + EMEA reps and terminate ${inS.length-PERF_KEEP.size}:</b> retain ${[...PERF_KEEP].map(esc).join(", ")}; terminate ${inS.filter(r=>!PERF_KEEP.has(r.rep)).map(r=>esc(r.rep)).join(", ")}. The retained reps hold ${pf(sum(won.filter(r=>PERF_KEEP.has(r.rep)))/(sum(won.filter(r=>r.status==="Active"&&IN_SCOPE(r)))||1))} of active-rep won $ and ${pf(sum(open.filter(r=>PERF_KEEP.has(r.rep)))/(sum(open.filter(r=>r.status==="Active"&&IN_SCOPE(r)))||1))} of active-rep open pipeline. See the stack rank.`,
+   `<b>The terminated reps produced half the year:</b> ${$f(iw)} of ${$f(tw)} won (${pf(iw/tw)}) and ${$f(io)} of ${$f(tp)} open pipeline (${pf(io/tp)}) sit with reps no longer on the roster.`,
+   `<b>Only ${$f(sum(ioCov))} of that open pipeline falls in an active rep's territory</b> (${[...new Set(ioCov.map(r=>esc(r.acct)+" → "+esc(r.terrRep)))].join("; ")}). The rest — ${$f(io-sum(ioCov))} — has no territory rep: IAI Israel (${$f(sum(open.filter(r=>r.acct==="IAI Group Israel")))}), Safran France, Milexia Germany, Lockheed Littleton CO.`,
+   `<b>Europe coverage does not match where the business is:</b> active EMEA reps cover Turkey, Italy and Greece; 2026 EMEA opportunities were in Israel, France and Germany. ${$f(sum(emeaOpen))} of EMEA open pipeline has no active rep.`,
+   `<b>${zero.length} of the ${inS.length} active in-scope reps have no 2026 opportunities:</b> ${zero.map(r=>esc(r.rep)).join(", ")}. All three fail every performance bar.`,
+   `<b>US territories with 2026 business and no active rep:</b> New England (Raytheon Andover, Microchip, Analog Devices, BAE), Colorado (General Atomics, Lockheed Littleton, Radiometrics), PA/NY, Texas, California — ${$f(sum(noRep.filter(r=>r.country==="United States")))} of 2026 US opportunity $.`,
+   `<b>Active reps working outside their contracts:</b> ${outT.length} opportunities (${$f(sum(outT))}) are credited to an active rep but billed outside that rep's territory — ${outT.map(r=>esc(r.rep)+" at "+esc(r.acct)).join("; ")}. Confirm commission eligibility.`,
+  ];
+  document.getElementById("brief").innerHTML=items.map(i=>`<li>${i}</li>`).join("");
+  const flags=[
+   ["Terminated reps' open pipeline needs an owner now.",`${open.filter(r=>r.status==="Inactive").length} open opps worth ${$f(io)}. Confirm post-termination commission terms (procuring cause) before these close.`],
+   ["No closed-lost deals in the report.","Win rate by rep can't be measured. Pull Closed Lost into this report before final decisions."],
+   [`${DATA.filter(r=>r.dupWon).length} won opportunities look duplicated.`,"Blue Origin AEMQ-0005533 (3 won + 1 commit on the same quote) and GD Scottsdale NLG 2606-03018; the LMCO Orlando $79.5K description also flags a duplicate. Verify before paying commission."],
+   [`${DATA.filter(r=>!r.lead).length} of ${DATA.length} opps have no lead source.`,"Rep-referred credit is understated until these are filled."],
+   ["3 active reps show no 2026 activity.","Cain-Forlaw, Kolt and Microelit show zero opportunities: confirm whether they are inactive in practice or their deals aren't tagged in Salesforce."],
+   ["Commission rule is assumed from your brief.","Americas = New Customer + Expansion; EMEA = all business; rate defaults to 5%. Adjust in the scorecard controls."],
+  ];
+  document.getElementById("flags").innerHTML=flags.map(([a,b])=>`<div class="flag"><i>!</i><div><b>${esc(a)}</b> ${esc(b)}</div></div>`).join("");
+  document.getElementById("footnote").textContent=`Sources: Salesforce report "Cris_Pike_Report" exported 2026-11-17 (64 opportunities, 59 fields) and the current AEM rep roster (12 agreements). Status: reps on the roster = Active; reps on opportunities but not on the roster = Inactive (terminated). Region from roster (USA = Americas; Turkey, Italy/Greece = EMEA; Japan, India, S Korea = APAC). Terminated EMEA reps: Protec, STG Group, Milexia. Stage probabilities for weighted pipeline: Solutioning 20%, Proposal 35%, Quoted 50%, Commit 80%. "Today" = Nov 17, 2026. Verified Nov 17, 2026: 716 values matched an independent recalculation with 0 differences: all 158 measures + 20 rep scores unfiltered; all 158 measures under OpCo = REN, Status = Active and Status = Inactive; and 64 values in the performance stack rank (rank, score, opps, closed won, commissionable, open, weighted, decision). Regression passed 188 single-filter checks, 20 rep values, 300 random filter combinations, all 158 drill-downs and 20 rep drills with no errors, on desktop, tablet and phone widths.`;
+}
+
+
+// ---------- performance stack rank (full 2026, active Americas + EMEA) ----------
+const PERF_BAR={comm:100000,pipe:100000,opps:5};
+const PERF_NOTE={
+ "E-Components":r=>`Top performer on every measure. ${$f(r.comm)} won, all of it commissionable; ${$f(r.pipe)} open (${$f(r.wpipe)} weighted), the largest open book of any active rep. ${r.newwork} new logos/programs across ${r.accts} accounts, all in territory. Risk: open $ is all in the Pipeline forecast category; none is in Commit yet.`,
+ "ETSI, LLC":r=>`Largest bookings in the network (${$f(r.won)}) and ${$f(r.pipe)} open across ${r.openN} opps. Only ${$f(r.comm)} is commissionable because most of the won $ is repeat Northrop Grumman Baltimore business (${$f(2415161.3)}, 95% of ETSI's won $). Retain, but the Northrop dependence is the risk; push for new logos.`,
+ "TSC Kruvand Technologies":r=>`${$f(r.comm)} commissionable won from ${r.wonN} bookings, mostly General Dynamics Scottsdale. Pipeline is thin: ${$f(r.pipe)} open. Retain on bookings, with a 90-day pipeline-build target. Caveat: PO NLG 2606-03018 appears twice ($132K + $28K); if the $132K line is a duplicate, commissionable won drops to $44K and TSC falls below the bar.`,
+ "Mel Foster Company":r=>`${r.opps} opportunities and ${$f(r.won)} won in 10.5 months across an 8-state territory; nothing open. Below every bar. Its whole territory produced ${$f(16625)} in 2026, so terminating costs little coverage.`,
+ "Electronic Component Sales (ECS)":r=>`${r.opps} opportunity (${$f(r.won)} won at AT&T); nothing open. Below every bar. Coverage risk: ECS's territory holds Blue Origin ($607K won, $190K open in 2026, all through Pillar, now terminated). If ECS goes, Blue Origin must be covered house or by a new rep.`,
+ "Cain-Forlaw CO.":r=>`No 2026 opportunities in Michigan, and not set up for commission upload. Nothing to retain on performance.`,
+ "Kolt":r=>`No 2026 opportunities in Turkey, and not on the new contract. Nothing to retain on performance.`,
+ "Microelit":r=>`No 2026 opportunities in Italy or Greece, and not on the new contract. Nothing to retain on performance.`,
+};
+function perfRank(){
+  const U=REPS.filter(r=>r.status==="Active"&&IN_SCOPE(r));
+  const all=scoreReps(DATA,REPS,W0);const rows=all.filter(r=>r.status==="Active"&&IN_SCOPE(r));
+  rows.sort((a,b)=>b.score-a.score||b.won-a.won||a.rep.localeCompare(b.rep));
+  rows.forEach((r,i)=>{r.prank=i+1;r.bars=[r.comm>=PERF_BAR.comm,r.pipe>=PERF_BAR.pipe,r.opps>=PERF_BAR.opps];r.met=r.bars.filter(Boolean).length;r.retain=r.met>=2;r.total=r.won+r.pipe;r.why=(PERF_NOTE[r.rep]||(x=>""))(r);});
+  return rows;
+}
+function renderPerf(){
+  const P=perfRank(),keep=P.filter(r=>r.retain),cut=P.filter(r=>!r.retain);
+  const sm=(a,k)=>a.reduce((s,r)=>s+r[k],0);
+  const aw=sm(P,"won"),ap=sm(P,"pipe");
+  const k=[["Retain",keep.length,keep.map(r=>r.rep.split(" ")[0].replace(",","")).join(", "),"keep","✓"],["Terminate",cut.length,cut.map(r=>r.rep.split(" ")[0].replace(",","").replace("Electronic","ECS")).join(", "),"cut","✕"],
+    ["Retained reps' share of active won $",(aw?Math.round(100*sm(keep,"won")/aw):0)+"%",`${$f(sm(keep,"won"))} of ${$f(aw)}`],
+    ["Retained reps' share of active open $",(ap?Math.round(100*sm(keep,"pipe")/ap):0)+"%",`${$f(sm(keep,"pipe"))} of ${$f(ap)}`],
+    ["Won $ walking out with terminated reps",$f(sm(cut,"won")),`${cut.filter(r=>r.opps).length} of ${cut.length} had any 2026 opportunity`],
+    ["Open $ held by terminated reps",$f(sm(cut,"pipe")),"nothing to reassign"]];
+  document.getElementById("perfKpis").innerHTML=k.map(([a,b,c,p,pt])=>`<div class="kpi"><div class="lbl">${a}</div><div class="v">${b} ${p?`<span class="pill ${p}" style="font-size:11px;vertical-align:middle">${pt}</span>`:""}</div><div class="s">${esc(c)}</div></div>`).join("");
+  document.getElementById("perfRule").innerHTML=`<b>Decision rule:</b> retain a rep that clears at least 2 of 3 performance bars for Jan 1 – Nov 17, 2026: <b>① commissionable won ≥ ${$f(PERF_BAR.comm)}</b> · <b>② open pipeline ≥ ${$f(PERF_BAR.pipe)}</b> · <b>③ ≥ ${PERF_BAR.opps} opportunities</b>. Otherwise terminate. Rank = rep score (0–100, default weights). Territory coverage is not an input.`;
+  barH(document.getElementById("cPerf"),P.map(r=>({label:`${r.prank}. ${r.rep}`,v:r.score,color:r.retain?"var(--s1)":"var(--crit)",dim:!r.retain,key:r.rep,tip:`<b>${esc(r.rep)}</b><br>${r.retain?"Retain":"Terminate"} · bars met ${r.met}/3<br>Score ${r.score.toFixed(1)} · closed won ${$f(r.won)} · open ${$f(r.pipe)}`})),
+    {fmt:v=>v.toFixed(0),lw:250,rh:28,aria:"Active rep stack rank",markLine:keep.length,markText:"retain ▲ · terminate ▼",onclick:k=>openRep(k)});
+  const b=r=>`<span class="bars">${r.bars.map((x,i)=>`<b class="${x?"y":"n"}" title="${["Commissionable won ≥ $100K","Open ≥ $100K","≥ 5 opps"][i]}">${["①","②","③"][i]}</b>`).join("")} ${r.met}/3</span>`;
+  const row=r=>`<tr class="${r.retain?"":"cutrow"}"><td class="num">${r.prank}</td><td><button class="lnk" type="button" data-rep="${esc(r.rep)}">${esc(r.rep)}</button><div class="muted" style="font-size:11.5px">${esc(r.region)} · ${esc(r.terr)}</div></td><td class="dec">${r.retain?'<span class="pill keep">✓ Retain</span>':'<span class="pill cut">✕ Terminate</span>'}</td><td class="num">${r.score.toFixed(1)}</td><td>${b(r)}</td><td class="num">${r.opps}</td><td class="num">${$f(r.won)}</td><td class="num">${$f(r.comm)}</td><td class="num">${$f(r.pipe)}</td><td class="num">${$f(r.wpipe)}</td><td class="num"><b>${$f(r.total)}</b></td></tr><tr class="whyrow ${r.retain?"":"cutrow"}"><td></td><td colspan="10" class="why"><b>${r.retain?"Why retain:":"Why terminate:"}</b> ${esc(r.why)}</td></tr>`;
+  const tot=(lab,a)=>`<tr class="tot"><td></td><td>${lab}</td><td></td><td></td><td></td><td class="num">${sm(a,"opps")}</td><td class="num">${$f(sm(a,"won"))}</td><td class="num">${$f(sm(a,"comm"))}</td><td class="num">${$f(sm(a,"pipe"))}</td><td class="num">${$f(sm(a,"wpipe"))}</td><td class="num">${$f(sm(a,"total"))}</td></tr>`;
+  const t=document.getElementById("perfTbl");
+  t.innerHTML=`<thead><tr><th class="num">Rank</th><th>Rep · territory</th><th>Decision</th><th class="num">Score</th><th>Bars met</th><th class="num">Opps</th><th class="num">Closed won $</th><th class="num">Commiss. won $</th><th class="num">Open pipeline $</th><th class="num">Weighted forecast $</th><th class="num">Total closed + open $</th></tr></thead><tbody>${P.map(row).join("")}${tot(`Retain (${keep.length})`,keep)}${tot(`Terminate (${cut.length})`,cut)}${tot("All active Americas + EMEA",P)}</tbody>`;
+  t.querySelectorAll("[data-rep]").forEach(x=>x.onclick=()=>openRep(x.dataset.rep));
+  document.getElementById("perfNote").textContent="Closed won $ = Closed Won amount. Open pipeline $ = every open stage; all open $ in this report is in the Pipeline forecast category. Weighted forecast $ = open $ × stage probability (Solutioning 20%, Proposal 35%, Quoted 50%, Commit 80%). Commissionable = New Customer + Expansion in the Americas, all business in EMEA. APAC reps (Comcraft ×2, Connekt, Hutec) are out of scope.";
+}
+
+buildFilters();brief();render();renderPerf();
+</script>
+<script>(function(){const b=document.getElementById('moreF'),f=document.getElementById('filters');if(!b)return;const n=()=>f.children.length;const lab=()=>{b.textContent=f.classList.contains('collapsed')?`Show all filters (${n()})`:'Show fewer filters';b.setAttribute('aria-expanded',!f.classList.contains('collapsed'))};b.addEventListener('click',()=>{f.classList.toggle('collapsed');lab()});lab();})();</script>
+</body>
+</html>
